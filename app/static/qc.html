@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>质控报表 · 卒中绿色通道质控台</title>
+<style>
+  :root{--hdr:#1A5FB4;--line:#D9DEE6;--bg:#F0F2F5;--ink:#1F2937;--muted:#6B7280;
+        --ok:#0F6E56;--warn:#854F0B;--danger:#A32D2D;}
+  *{box-sizing:border-box}
+  body{margin:0;font:12px/1.5 "Microsoft YaHei","PingFang SC",sans-serif;color:var(--ink);background:var(--bg)}
+  header{height:48px;background:var(--hdr);color:#fff;display:flex;align-items:center;gap:14px;padding:0 14px}
+  header .title{font-size:14px;font-weight:600}
+  header .tabs{display:flex;gap:2px;margin-left:6px}
+  header .tabs button{background:transparent;color:#CFE0F5;border:1px solid transparent;padding:3px 12px;border-radius:2px}
+  header .tabs button.on{background:#fff;color:var(--hdr);font-weight:600}
+  header .right{margin-left:auto;display:flex;gap:8px;align-items:center;font-size:12px}
+  header a{color:#fff;text-decoration:none;border:1px solid rgba(255,255,255,.45);padding:2px 8px;border-radius:2px}
+  .filters{display:flex;gap:10px;align-items:center;padding:8px 10px;background:#fff;border-bottom:1px solid var(--line)}
+  select,input{font:12px "Microsoft YaHei";padding:3px 6px;border:1px solid #C7CFDA;border-radius:2px;background:#fff}
+  button{font:12px "Microsoft YaHei";padding:3px 10px;border:1px solid #C7CFDA;background:#fff;border-radius:2px;cursor:pointer}
+  button:hover{background:#F3F6FA}
+  .sp{flex:1}
+
+  /* ---- 分母减法 ---- */
+  .denom{background:#fff;border:1px solid var(--line);margin:8px 8px 0;padding:8px 12px}
+  .denom .hd{display:flex;align-items:baseline;gap:10px;margin-bottom:6px}
+  .denom .hd b{font-size:13px}
+  .denom .hd span{color:var(--muted)}
+  .cascade{display:flex;align-items:stretch;gap:0;flex-wrap:wrap}
+  .cascade .cell{padding:6px 12px;border:1px solid var(--line);border-right:none;cursor:pointer;background:#FCFDFE;min-width:120px}
+  .cascade .cell:last-child{border-right:1px solid var(--line)}
+  .cascade .cell:hover{background:#EEF5FD}
+  .cascade .cell .n{font-size:16px;font-weight:600;line-height:1.2}
+  .cascade .cell .l{color:var(--muted);font-size:11px}
+  .cascade .cell .op{float:left;margin-right:6px;color:#9CA3AF;font-size:14px;line-height:20px}
+  .cascade .cell.minus .n{color:var(--danger)}
+  .cascade .cell.final{background:#E6F1FB;border-color:#B5D4F4}
+  .cascade .cell.final .n{color:var(--hdr)}
+
+  /* ---- 汇总 ---- */
+  .chips{display:flex;gap:8px;padding:8px 8px 0}
+  .chip{background:#fff;border:1px solid var(--line);padding:4px 12px;font-size:12px}
+  .chip b{font-size:15px;margin-left:4px}
+  .chip.ok b{color:var(--ok)} .chip.bad b{color:var(--danger)} .chip.na b{color:var(--muted)}
+
+  /* ---- 表格 ---- */
+  .wrap{display:grid;grid-template-columns:1fr 400px;gap:8px;padding:8px;align-items:start}
+  .panel{background:#fff;border:1px solid var(--line)}
+  .panel h3{margin:0;padding:6px 10px;font-size:12px;border-bottom:1px solid var(--line);background:#FAFBFC;font-weight:600;display:flex;gap:8px}
+  .panel h3 em{font-style:normal;color:var(--muted);font-weight:400}
+  table{width:100%;border-collapse:collapse;font-size:12px}
+  th,td{border:1px solid var(--line);padding:4px 8px;text-align:left;white-space:nowrap}
+  th{background:#F7F9FB;font-weight:600}
+  tbody tr{cursor:pointer}
+  tbody tr:nth-child(even){background:#FCFDFE}
+  tbody tr:hover{background:#EEF5FD}
+  tbody tr.sel{background:#E6F1FB}
+  td.num{text-align:right;font-family:Consolas,monospace}
+  .st{display:inline-block;padding:0 5px;border-radius:2px;font-size:11px;line-height:16px}
+  .st-pass{background:#E1F5EE;color:#0B5344}
+  .st-fail{background:#FCEBEB;color:#7A1F1F;font-weight:600}
+  .st-na{background:#EEF1F5;color:#6B7280}
+  .st-ins{background:#FAEEDA;color:#7A4A0B}
+  .code{font-family:Consolas,monospace;color:var(--muted)}
+  .muted{color:var(--muted)}
+  .empty{color:#9CA3AF;padding:20px;text-align:center}
+
+  /* ---- 抽屉 ---- */
+  .drawer .body{padding:8px 10px;max-height:calc(100vh - 250px);overflow:auto}
+  .kv{display:grid;grid-template-columns:72px 1fr;gap:4px 8px;margin-bottom:8px}
+  .kv .k{color:var(--muted)}
+  .sec{margin:10px 0 4px;font-weight:600;color:#374151;border-bottom:1px solid #EEF1F5;padding-bottom:3px;display:flex;justify-content:space-between}
+  .seg{display:flex;border:1px solid #C7CFDA;border-radius:2px;overflow:hidden}
+  .seg button{border:none;border-radius:0;padding:2px 10px}
+  .seg button.on{background:var(--hdr);color:#fff}
+  .mini{width:100%;font-size:11px}
+  .mini th,.mini td{padding:2px 5px}
+
+  /* ---- 整改台账 ---- */
+  .find{display:grid;grid-template-columns:1fr 420px;gap:8px;padding:8px;align-items:start}
+  .bar{display:flex;gap:6px;padding:8px 8px 0}
+  .bar .pill{border:1px solid var(--line);background:#fff;padding:3px 10px;cursor:pointer}
+  .bar .pill.on{background:var(--hdr);color:#fff;border-color:var(--hdr)}
+  .tl{list-style:none;margin:0;padding:0}
+  .tl li{position:relative;padding:3px 0 3px 14px;border-left:1px solid #E3E8EF;margin-left:4px}
+  .tl li:before{content:"";position:absolute;left:-3px;top:9px;width:5px;height:5px;border-radius:50%;background:#9CA3AF}
+  .cmp{display:grid;grid-template-columns:1fr 24px 1fr;gap:6px;align-items:center;border:1px solid var(--line);padding:8px;margin:6px 0}
+  .cmp .v{text-align:center}
+  .cmp .v b{font-size:16px;display:block;font-family:Consolas,monospace}
+  .cmp .v span{color:var(--muted);font-size:11px}
+  .cmp .arrow{text-align:center;color:#9CA3AF}
+  .delta{font-size:11px;margin-left:6px}
+  .up{color:var(--ok)} .down{color:var(--danger)}
+
+  /* ---- 页脚 ---- */
+  footer{display:flex;gap:18px;padding:6px 12px;color:var(--muted);font-size:11px;
+         background:#fff;border-top:1px solid var(--line);margin:0 8px 8px}
+  footer b{color:var(--ink);font-weight:600}
+
+  /* ---- 整改操作 ---- */
+  .opform{border:1px solid #C7CFDA;background:#FCFDFE;padding:8px;margin-top:6px}
+  .fld{margin-bottom:6px}
+  .fld label{color:var(--muted);margin-right:4px}
+  .fld textarea,.fld input{width:100%;font:12px "Microsoft YaHei";padding:4px 6px;
+    border:1px solid #C7CFDA;border-radius:2px;resize:vertical}
+  .fld input[type=date]{width:auto}
+  #ops button{margin:0 4px 4px 0}
+  #ops button[disabled]{opacity:.45;cursor:not-allowed}
+
+  @media print{
+    body{background:#fff}
+    header,.filters,.chips,.drawer,.bar,.no-print{display:none!important}
+    .wrap,.find{grid-template-columns:1fr;padding:0}
+    .denom{margin:0;border:none;border-bottom:2px solid #333}
+    .panel{border:none}
+    th{background:#eee!important}
+    footer{margin:0;border-top:1px solid #333}
+    table{font-size:10px}
+  }
+</style>
+</head>
+<body>
+<header>
+  <span class="title">质控报表</span>
+  <div class="tabs">
+    <button id="tabReport" class="on">报表</button>
+    <button id="tabFind">整改台账</button>
+  </div>
+  <div class="right">
+    <a href="/">首页</a>
+    <a href="/cases">病例列表</a>
+    <a href="/followups">随访工作台</a>
+    <a href="/monitor">术中监控</a>
+    <a href="/about">数据说明</a>
+  </div>
+</header>
+
+<!-- ==================== 报表 ==================== -->
+<div id="viewReport">
+  <div class="filters">
+    <label>统计期间 <select id="fRange"></select></label>
+    <label>病区 <select id="fDept"><option value="">全部病区</option></select></label>
+    <button id="btnRefresh">刷新</button>
+    <span class="sp"></span>
+    <span class="muted" id="hint">点击任一行查看分子/分母明细</span>
+    <button id="btnPrint">打印 / 导出 PDF</button>
+  </div>
+
+  <div class="denom">
+    <div class="hd">
+      <b>分母构成</b>
+      <span id="denomNote">—</span>
+    </div>
+    <div class="cascade" id="cascade"></div>
+  </div>
+
+  <div class="chips" id="chips"></div>
+
+  <div class="wrap">
+    <div id="tables"></div>
+    <section class="panel drawer">
+      <h3>指标明细 <em id="drillTitle">请在左侧选择一行</em></h3>
+      <div class="body" id="drillBody">
+        <div class="empty">选择左侧任一指标，可查看该指标的分子与分母分别包含哪些病例。</div>
+      </div>
+    </section>
+  </div>
+
+  <footer>
+    <span>口径版本 <b id="fVersion">—</b></span>
+    <span>数据截止 <b id="fUntil">—</b></span>
+    <span>生成时间 <b id="fGen">—</b></span>
+    <span>统计范围 <b id="fScope">—</b></span>
+  </footer>
+</div>
+
+<!-- ==================== 整改台账 ==================== -->
+<div id="viewFind" hidden>
+  <div class="bar" id="findBar"></div>
+  <div class="find">
+    <section class="panel">
+      <h3>整改事项 <em id="findCount"></em></h3>
+      <div style="overflow:auto;max-height:calc(100vh - 200px)">
+        <table>
+          <thead><tr>
+            <th>#</th><th>级别</th><th>严重度</th><th>事项</th><th>关联指标</th>
+            <th>责任人</th><th>期限</th><th>状态</th><th>退回</th>
+          </tr></thead>
+          <tbody id="findRows"><tr><td colspan="9" class="empty">加载中…</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+    <section class="panel drawer">
+      <h3>整改详情 <em id="findTitle">请选择一条</em></h3>
+      <div class="body" id="findBody" style="padding:8px 10px;max-height:calc(100vh - 200px);overflow:auto">
+        <div class="empty">选择左侧任一事项，查看整改前后对比与措施记录。</div>
+      </div>
+    </section>
+  </div>
+  <footer>
+    <span>说明 <b>关闭必须带当期指标值</b>；追溯关闭后仍可按「已关闭」筛选复核</span>
+  </footer>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const B = '';
+let R = null, state = {code: null, side: 'den'}, findings = [], curFinding = null, fFilter = '';
+
+async function jget(u){
+  const r = await fetch(B + u, {headers:{'Accept':'application/json'}});
+  if(!r.ok) throw new Error((await r.json().catch(()=>({detail:r.statusText}))).detail || r.statusText);
+  return r.json();
+}
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/* ---------------- 报表 ---------------- */
+async function loadReport(){
+  const range = $('#fRange').value || 'm12';
+  const dept = $('#fDept').value;
+  try{
+    R = await jget(`/api/qc/report?range=${range}${dept?`&dept=${dept}`:''}`);
+  }catch(e){
+    $('#tables').innerHTML = `<div class="panel empty">报表生成失败：${esc(e.message)}</div>`;
+    return;
+  }
+  if(R.empty){
+    $('#cascade').innerHTML = '<div class="empty">所选期间无病例</div>';
+    $('#chips').innerHTML = '';
+    $('#tables').innerHTML = '<div class="panel empty">所选期间无病例，请调整期间或病区</div>';
+    return;
+  }
+  if(!$('#fRange').dataset.filled){
+    $('#fRange').innerHTML = R.ranges.map(r=>`<option value="${r.key}"${r.key===R.range?' selected':''}>${r.label}</option>`).join('');
+    $('#fDept').innerHTML = '<option value="">全部病区</option>' +
+      R.depts.map(d=>`<option value="${d.id}">${esc(d.name)}</option>`).join('');
+    $('#fRange').dataset.filled = '1';
+  }
+  renderDenom(); renderChips(); renderTables(); renderFooter();
+  document.querySelectorAll('#tables tbody tr').forEach(tr=>{
+    tr.onclick = () => pick(tr.dataset.code);
+  });
+}
+
+function renderDenom(){
+  const d = R.denominator;
+  const cells = (d.steps||[]).map(s=>{
+    const bd = s.breakdown ? `<div class="l">${Object.entries(s.breakdown).map(([k,v])=>`${k.toUpperCase()} ${v}`).join(' · ')}</div>` : '';
+    return `<div class="cell ${s.key==='total'?'':'minus'}" data-step="${s.key}" title="${esc(s.note)}">
+      ${s.key==='total'?'':`<span class="op">${s.op}</span>`}
+      <div class="n">${s.n}</div><div class="l">${esc(s.label)}</div>${bd}</div>`;
+  }).join('');
+  cells && ($('#cascade').innerHTML = cells +
+    `<div class="cell final"><div class="n">${d.eligible}</div><div class="l">可评价（分母）</div></div>`);
+  $('#denomNote').textContent = d.total
+    ? `每层都可点开核对。分母 = ${d.total} − ${(d.steps||[]).slice(1).map(s=>s.n).join(' − ')} = ${d.eligible}`
+    : '本期无数据';
+  document.querySelectorAll('#cascade .cell[data-step]').forEach(c=>{
+    if(c.dataset.step === 'total') return;
+    c.onclick = () => showStep(c.dataset.step);
+  });
+}
+
+function showStep(key){
+  const s = R.denominator.steps.find(x=>x.key===key);
+  $('#drillTitle').textContent = `${s.label}（${s.n} 例）`;
+  const bd = s.breakdown ? Object.entries(s.breakdown).map(([k,v])=>`<div class="kv"><div class="k">${k.toUpperCase()}</div><div>${v} 例</div></div>`).join('') : '';
+  $('#drillBody').innerHTML = `
+    <div class="kv"><div class="k">口径</div><div>${esc(s.note)}</div></div>
+    <div class="kv"><div class="k">例数</div><div><b>${s.n}</b></div></div>
+    ${bd}
+    <div class="sec">说明</div>
+    <div class="muted">排除规则落在数据库视图 v_qc_eligible 上，报表与病例列表用的是同一套条件。改动口径会同时影响两处。</div>`;
+}
+
+function renderChips(){
+  const s = R.summary;
+  $('#chips').innerHTML = `
+    <div class="chip">指标总数<b>${s.total}</b></div>
+    <div class="chip ok">达标<b>${s.pass}</b></div>
+    <div class="chip bad">未达标<b>${s.fail}</b></div>
+    <div class="chip na">无数据 / 样本不足<b>${s.na}</b></div>
+    <div class="chip">可评价病例<b>${R.denominator.eligible}</b></div>`;
+}
+
+function renderTables(){
+  $('#tables').innerHTML = R.layers.map(L=>`
+    <section class="panel" style="margin-bottom:8px">
+      <h3>${L.label} <em>达标 ${L.pass} / 未达标 ${L.fail} / 无数据 ${L.na}</em></h3>
+      <table>
+        <thead><tr>
+          <th style="width:52px">编号</th><th>指标</th><th style="width:88px;text-align:right">本期值</th>
+          <th style="width:92px;text-align:right">分子/分母</th><th style="width:76px">目标</th>
+          <th style="width:76px">判定</th>
+        </tr></thead>
+        <tbody>
+        ${L.rows.map(r=>{
+          const nd = r.den==null ? '—'
+            : (r.kind==='median' ? `n=${r.den}` : `${r.num ?? '—'}/${r.den}`);
+          const tgt = r.target==null ? '<span class="muted">—</span>'
+            : `${r.direction==='le'?'≤':'≥'}${r.target}${r.unit==='%'?'%':''}`;
+          const cls = {pass:'st-pass',fail:'st-fail',na:'st-na',insufficient:'st-ins'}[r.status]||'st-na';
+          return `<tr data-code="${r.code}">
+            <td class="code">${r.code}</td>
+            <td>${esc(r.name)}</td>
+            <td class="num">${esc(r.display)}</td>
+            <td class="num">${nd}</td>
+            <td>${tgt}</td>
+            <td><span class="st ${cls}">${r.status_cn}</span></td>
+          </tr>`;
+        }).join('')}
+        </tbody>
+      </table>
+    </section>`).join('');
+}
+
+function renderFooter(){
+  const f = R.footer;
+  $('#fVersion').textContent = f.version;
+  $('#fUntil').textContent = f.data_until;
+  $('#fGen').textContent = f.generated_at;
+  $('#fScope').textContent = f.scope;
+}
+
+async function pick(code){
+  state = {code, side: 'den'};
+  document.querySelectorAll('#tables tbody tr').forEach(tr=>
+    tr.classList.toggle('sel', tr.dataset.code===code));
+  await loadDrill();
+}
+
+async function loadDrill(){
+  const {code, side} = state;
+  const row = R.layers.flatMap(l=>l.rows).find(r=>r.code===code);
+  if(!row) return;
+  $('#drillTitle').textContent = `${row.code} ${row.name}`;
+  if(row.den == null){
+    $('#drillBody').innerHTML = `<div class="kv"><div class="k">状态</div><div>${row.status_cn}</div></div>
+      <div class="kv"><div class="k">原因</div><div>${esc(row.na_reason||'—')}</div></div>`;
+    return;
+  }
+  const range = $('#fRange').value || 'm12';
+  const dept = $('#fDept').value;
+  let d;
+  try{
+    d = await jget(`/api/qc/indicators/${code}/drill?side=${side}&range=${range}${dept?`&dept=${dept}`:''}`);
+  }catch(e){
+    $('#drillBody').innerHTML = `<div class="empty">下钻失败：${esc(e.message)}</div>`; return;
+  }
+  const nd = row.kind==='median' ? `n=${row.den}` : `${row.num}/${row.den}`;
+  const head = `
+    <div class="kv"><div class="k">本期值</div><div><b>${esc(row.display)}</b> <span class="muted">（${nd}）</span></div></div>
+    <div class="kv"><div class="k">目标</div><div>${row.target==null?'—':`${row.direction==='le'?'≤':'≥'}${row.target}${row.unit==='%'?'%':''} · ${row.status_cn}`}</div></div>`;
+  if(d.kind === 'config'){
+    $('#drillBody').innerHTML = head + `<div class="sec">明细</div><div class="muted">${esc(d.note||'结构指标无病例明细')}</div>`;
+    return;
+  }
+  const isPlan = d.kind === 'plan';
+  // 中位数类指标没有"分子"概念，只列参与计算的病例
+  const btn = row.kind === 'median'
+    ? `<div class="sec">参与计算的病例 <span class="muted">n=${row.den}</span></div>`
+    : `<div class="sec">${isPlan?'随访节点':'病例'}明细
+      <span class="seg">
+        <button data-side="num" class="${side==='num'?'on':''}">分子 ${row.num??''}</button>
+        <button data-side="den" class="${side==='den'?'on':''}">分母 ${row.den}</button>
+      </span>
+    </div>`;
+  const rows = d.rows.map(r=>{
+    const mark = r.hit ? '<span class="st st-pass">计入分子</span>' : '<span class="muted">—</span>';
+    if(isPlan){
+      return `<tr><td class="code">${esc(r.case_no)}</td><td>${esc(r.node)}</td>
+        <td>${esc(r.status)}</td><td class="code">${esc(r.window_end||'')}</td><td>${mark}</td></tr>`;
+    }
+    return `<tr><td class="code">${esc(r.case_no)}</td><td>${esc(r.dept_id)}</td>
+      <td>${esc(r.mtici||'—')}</td><td class="code">${esc((r.arrival_at||'').slice(5,16))}</td><td>${mark}</td></tr>`;
+  }).join('');
+  const cols = isPlan
+    ? '<th>病例号</th><th>节点</th><th>状态</th><th>窗口截止</th><th>归属</th>'
+    : '<th>病例号</th><th>病区</th><th>mTICI</th><th>到院</th><th>归属</th>';
+  $('#drillBody').innerHTML = head + btn + `
+    <div class="muted" style="margin:4px 0 6px">共 ${d.n} 条（${side==='num'?'计入分子':'进入分母'}）</div>
+    <table class="mini"><thead><tr>${cols}</tr></thead><tbody>${rows || '<tr><td colspan="5" class="empty">无记录</td></tr>'}</tbody></table>`;
+  $('#drillBody').querySelectorAll('.seg button').forEach(b=>{
+    b.onclick = () => { state.side = b.dataset.side; loadDrill(); };
+  });
+}
+
+$('#btnRefresh').onclick = loadReport;
+$('#fRange').onchange = loadReport;
+$('#fDept').onchange = loadReport;
+$('#btnPrint').onclick = () => window.print();
+
+/* ---------------- 整改台账 ---------------- */
+async function loadFindings(){
+  try{
+    findings = (await jget('/api/qc/findings')).rows;
+  }catch(e){
+    $('#findRows').innerHTML = `<tr><td colspan="9" class="empty">加载失败：${esc(e.message)}</td></tr>`;
+    return;
+  }
+  const CN = {open:'待处理',assigned:'已指派',fixing:'整改中',verifying:'待复核',closed:'已关闭',rejected:'已驳回'};
+  const order = ['','open','assigned','fixing','verifying','closed','rejected'];
+  const cnt = {}; findings.forEach(f=>cnt[f.status]=(cnt[f.status]||0)+1);
+  $('#findBar').innerHTML = order.map(k=>{
+    const label = k ? `${CN[k]} ${cnt[k]||0}` : `全部 ${findings.length}`;
+    return `<div class="pill ${fFilter===k?'on':''}" data-k="${k}">${label}</div>`;
+  }).join('');
+  $('#findBar').querySelectorAll('.pill').forEach(p=>{
+    p.onclick = () => { fFilter = p.dataset.k; loadFindings(); };
+  });
+
+  const list = findings.filter(f=>!fFilter || f.status===fFilter);
+  $('#findCount').textContent = `${list.length} 条`;
+  $('#findRows').innerHTML = list.map(f=>`
+    <tr data-id="${f.id}" class="${curFinding===f.id?'sel':''}">
+      <td class="code">F${f.id}</td>
+      <td>${f.level_cn}</td>
+      <td>${f.severity_cn}</td>
+      <td title="${esc(f.description||'')}">${esc(f.title).slice(0,34)}</td>
+      <td class="code">${esc(f.indicator_code||'—')}</td>
+      <td>${f.owner_name ? esc(f.owner_name) : '<span class="muted">未指派</span>'}</td>
+      <td class="code">${esc(f.due_date||'—')}</td>
+      <td><span class="st ${f.status==='closed'?'st-pass':(f.status==='rejected'?'st-na':'st-ins')}">${f.status_cn}</span></td>
+      <td class="num">${f.return_count||0}</td>
+    </tr>`).join('') || '<tr><td colspan="9" class="empty">无记录</td></tr>';
+  $('#findRows').querySelectorAll('tr[data-id]').forEach(tr=>{
+    tr.onclick = () => openFinding(Number(tr.dataset.id));
+  });
+}
+
+function fmtMetric(m){
+  if(!m) return '—';
+  const [code, v] = Object.entries(m)[0] || [];
+  if(!code) return '—';
+  return `${code} ${v.value}%${v.n?`（n=${v.n}）`:''}`;
+}
+
+async function openFinding(id){
+  curFinding = id;
+  document.querySelectorAll('#findRows tr').forEach(tr=>
+    tr.classList.toggle('sel', Number(tr.dataset.id)===id));
+  const f = findings.find(x=>x.id===id);
+  if(!f) return;
+  $('#findTitle').textContent = `F${f.id} ${f.status_cn}`;
+  $('#findBody').innerHTML = '<div class="empty">加载中…</div>';
+  let d;
+  try{ d = await jget(`/api/qc/findings/${id}`); }
+  catch(e){ $('#findBody').innerHTML = `<div class="empty">加载失败：${esc(e.message)}</div>`; return; }
+  renderFinding(d);
+}
+
+const STATUS_HINT = {
+  open:'尚未指派责任人。整改落到人才有意义，指派后开始计时。',
+  assigned:'已指派责任人，等待开始执行。',
+  fixing:'整改进行中。每完成一项登记一条措施，可作为复核依据。',
+  verifying:'已提交复核。质控科确认有效后关闭，无效则退回并累加退回次数。',
+  closed:'已关闭。关闭时的指标值由系统现场计算并留档，不可手工填写。',
+  rejected:'已驳回。通常表示经复核不属于质量问题，或指标口径需要修订。'
+};
+
+function renderFinding(d){
+  const f = d.finding;
+  const open = f.metrics_at_open, close = f.metrics_at_close;
+  let cmp = '';
+  if(open){
+    const oc = Object.keys(open)[0], ov = open[oc].value;
+    const cv = close && close[oc] ? close[oc].value : null;
+    const dlt = cv!=null ? (cv - ov) : null;
+    const lowerBetter = ['OU02','OU06','PR09','OU03'].includes(f.indicator_code);
+    const good = dlt!=null && (lowerBetter ? dlt<0 : dlt>0);
+    cmp = `<div class="sec">整改前后对比</div>
+      <div class="cmp">
+        <div class="v"><b>${ov}%</b><span>整改前 · n=${open[oc].n||'—'}</span></div>
+        <div class="arrow">→</div>
+        <div class="v"><b>${cv!=null?cv+'%':'待评估'}</b>
+          <span>${cv!=null?`整改后 · n=${close[oc].n||'—'}`:'复核通过后由系统填入'}</span></div>
+      </div>
+      ${dlt!=null?`<div class="delta ${good?'up':'down'}">${dlt>=0?'+':''}${dlt.toFixed(1)} 个百分点
+        ${good?'（改善）':'（未改善）'}${lowerBetter?'· 本指标越低越好':''}</div>`:''}`;
+  }
+
+  const acts = (d.actions||[]).map(a=>`
+    <li><span class="tm">${esc(a.created_at||'')}</span>${esc(a.action)}
+      <span class="muted">${a.owner_name?'· '+esc(a.owner_name):''}${a.result?' · 结果：'+esc(a.result):''}</span></li>`
+  ).join('') || '<li class="muted">尚无措施记录</li>';
+
+  const logs = (d.logs||[]).slice(-8).map(l=>`
+    <li><span class="tm">${esc(l.created_at||'')}</span>${esc(l.action)}
+      <span class="muted">${esc(l.actor||'')}</span></li>`).join('') || '<li class="muted">—</li>';
+
+  $('#findBody').innerHTML = `
+    <div class="kv"><div class="k">事项</div><div>${esc(f.title)}</div></div>
+    <div class="kv"><div class="k">级别</div><div>${f.level==='systemic'?'系统性':'个案'}${f.case_no?` · <span class="code">${esc(f.case_no)}</span>`:''}</div></div>
+    <div class="kv"><div class="k">关联指标</div><div>${f.indicator_code?`<span class="code">${esc(f.indicator_code)}</span>`:'—'}</div></div>
+    <div class="kv"><div class="k">责任人</div><div>${f.owner_name?esc(f.owner_name):'<span class="muted">未指派</span>'}</div></div>
+    <div class="kv"><div class="k">期限</div><div class="code">${esc(f.due_date||'—')}</div></div>
+    <div class="kv"><div class="k">状态</div><div><b>${f.status_cn}</b>${f.return_count?` · 已退回 ${f.return_count} 次`:''}</div></div>
+    <div class="muted" style="margin:4px 0 8px">${STATUS_HINT[f.status]||''}</div>
+
+    <div class="sec">问题描述</div>
+    <div style="white-space:pre-wrap">${esc(f.description||'—')}</div>
+    ${cmp}
+    ${f.verify_note?`<div class="sec">复核意见</div><div style="white-space:pre-wrap">${esc(f.verify_note)}</div>`:''}
+
+    <div class="sec">整改措施 <span class="muted">${(d.actions||[]).length} 条</span></div>
+    <ul class="tl">${acts}</ul>
+
+    <div class="sec">操作记录</div>
+    <ul class="tl">${logs}</ul>
+
+    <div class="sec">可用操作</div>
+    <div id="ops">${opsFor(f, d)}</div>
+    <div id="opForm"></div>`;
+  bindOps(f, d);
+}
+
+function opsFor(f, d){
+  const has = (d.actions||[]).length;
+  const cm = d.current_metric && Object.keys(d.current_metric)[0];
+  switch(f.status){
+    case 'open':
+      return `<button data-op="assign">指派责任人</button>
+              <button data-op="reject">驳回</button>`;
+    case 'assigned':
+      return `<button data-op="start">开始整改</button>
+              <button data-op="action">登记措施</button>
+              <button data-op="submit" ${has?'':'disabled title="需先登记至少一条措施"'}>提交复核</button>
+              <button data-op="reject">驳回</button>`;
+    case 'fixing':
+      return `<button data-op="action">登记措施</button>
+              <button data-op="submit" ${has?'':'disabled title="需先登记至少一条措施"'}>提交复核</button>
+              <button data-op="reject">驳回</button>`;
+    case 'verifying':
+      return `<button data-op="close" ${cm?'':'disabled'}>复核通过并关闭</button>
+              <button data-op="return">退回整改</button>`;
+    default:
+      return '<span class="muted">已结束，无可用操作</span>';
+  }
+}
+
+function formHtml(kind){
+  if(kind==='assign') return `
+    <div class="fld"><label>责任人</label>
+      <select id="fOwner"><option value="qc">演示质控</option><option value="doctor">演示医生</option><option value="nurse">演示护士</option></select>
+      <label style="margin-left:8px">期限</label><input type="date" id="fDue">
+    </div>
+    <div class="fld"><label>说明</label><div class="muted" style="font-size:11px">个案默认 7 天、系统性默认 30 天，可改。</div></div>
+    <div class="fld"><button data-do="assign">确认指派</button> <button data-cancel>取消</button></div>`;
+  if(kind==='action') return `
+    <div class="fld"><textarea id="fAction" rows="2" placeholder="做了什么，例如：在分诊台增设卒中专用采血通道"></textarea></div>
+    <div class="fld"><label>结果</label><input id="fResult" placeholder="可留空，完成后填实际效果"></div>
+    <div class="fld"><button data-do="action">保存措施</button> <button data-cancel>取消</button></div>`;
+  if(kind==='submit') return `
+    <div class="fld"><textarea id="fNote" rows="2" placeholder="提交说明：改了什么、证据在哪"></textarea></div>
+    <div class="fld"><button data-do="submit">提交复核</button> <button data-cancel>取消</button></div>`;
+  if(kind==='close') return `
+    <div class="fld"><div class="muted" style="font-size:11px;margin-bottom:4px">
+      关闭时的指标值由系统现场计算并写入台账，不接受手工填写。</div></div>
+    <div class="fld"><textarea id="fNote" rows="2" placeholder="复核意见"></textarea></div>
+    <div class="fld"><button data-do="close">确认通过并关闭</button> <button data-cancel>取消</button></div>`;
+  if(kind==='return'||kind==='reject') return `
+    <div class="fld"><textarea id="fNote" rows="2" placeholder="${kind==='return'?'退回原因（必填）':'驳回理由（必填，通常为口径问题）'}"></textarea></div>
+    <div class="fld"><button data-do="${kind}">${kind==='return'?'确认退回':'确认驳回'}</button> <button data-cancel>取消</button></div>`;
+  return '';
+}
+
+function bindOps(f, d){
+  document.querySelectorAll('#ops button').forEach(b=>{
+    b.onclick = () => {
+      const op = b.dataset.op;
+      if(op==='start'){ call(`/api/qc/findings/${f.id}/start`, {}); return; }
+      $('#opForm').innerHTML = `<div class="opform">${formHtml(op)}</div>`;
+      const due = $('#fDue');
+      if(due){ const t=new Date(); t.setDate(t.getDate()+(f.level==='case'?7:30));
+               due.value = t.toISOString().slice(0,10); }
+      document.querySelectorAll('#opForm [data-do]').forEach(x=>{
+        x.onclick = () => submitOp(f, x.dataset.do);
+      });
+      const c = $('#opForm [data-cancel]'); if(c) c.onclick = ()=> $('#opForm').innerHTML='';
+    };
+  });
+}
+
+async function submitOp(f, kind){
+  const body = {};
+  if(kind==='assign'){ body.owner_id = $('#fOwner').value; if($('#fDue').value) body.due_date = $('#fDue').value; }
+  if(kind==='action'){ body.action = $('#fAction').value.trim(); body.result = $('#fResult').value.trim()||null;
+                       if(!body.action) return alert('措施内容不能为空'); }
+  if(kind==='submit'){ body.note = $('#fNote').value.trim()||null; }
+  if(kind==='close'){ body.passed = true; body.note = $('#fNote').value.trim()||null; }
+  if(kind==='return'){ body.passed = false; body.note = $('#fNote').value.trim(); }
+  if(kind==='reject'){ body.note = $('#fNote').value.trim(); }
+  const path = kind==='close'||kind==='return' ? 'verify' : kind;
+  await call(`/api/qc/findings/${f.id}/${path}`, body);
+}
+
+async function call(url, body){
+  const r = await fetch(B+url, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body||{})});
+  const j = await r.json().catch(()=>({}));
+  if(!r.ok){ alert(j.detail || `操作失败（${r.status}）`); return; }
+  await loadFindings();
+  await openFinding(curFinding);
+}
+
+$('#tabReport').onclick = () => switchTab('report');
+$('#tabFind').onclick = () => switchTab('find');
+function switchTab(t){
+  $('#tabReport').classList.toggle('on', t==='report');
+  $('#tabFind').classList.toggle('on', t==='find');
+  $('#viewReport').hidden = t!=='report';
+  $('#viewFind').hidden = t!=='find';
+  if(t==='find' && !findings.length) loadFindings();
+}
+
+(async function(){
+  await loadReport();
+  const p = new URLSearchParams(location.search);
+  if(p.get('tab')==='find') switchTab('find');
+})();
+</script>
+<script src="/static/degrade.js"></script>
+<script src="/static/nav.js"></script>
+</body>
+</html>

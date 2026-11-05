@@ -1,0 +1,36 @@
+services:
+  pg:
+    image: postgres:16-alpine
+    container_name: stroke_pg
+    environment:
+      POSTGRES_DB: strokeqc
+      POSTGRES_USER: stroke
+      POSTGRES_PASSWORD: ${PG_PASSWORD:-stroke_local_pwd}
+      TZ: Asia/Shanghai
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U stroke -d strokeqc"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: stroke_redis
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:-redis_local_pwd}", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-redis_local_pwd}", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  pgdata:
+  redisdata:

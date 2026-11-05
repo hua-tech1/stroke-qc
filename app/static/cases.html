@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>病例列表 · 卒中绿色通道质控台</title>
+<style>
+  :root{--hdr:#1A5FB4;--line:#D9DEE6;--bg:#F0F2F5;--ink:#1F2937;--muted:#6B7280;
+        --ok:#0F6E56;--warn:#854F0B;--danger:#A32D2D;}
+  *{box-sizing:border-box}
+  body{margin:0;font:12px/1.5 "Microsoft YaHei","PingFang SC",sans-serif;color:var(--ink);background:var(--bg)}
+  header{height:48px;background:var(--hdr);color:#fff;display:flex;align-items:center;gap:14px;padding:0 14px}
+  header .title{font-size:14px;font-weight:600}
+  header .right{margin-left:auto;display:flex;gap:10px;align-items:center;font-size:12px}
+  header a{color:#fff;text-decoration:none;border:1px solid rgba(255,255,255,.45);padding:2px 8px;border-radius:2px}
+  .filters{display:flex;gap:10px;align-items:center;padding:8px 10px;background:#fff;border-bottom:1px solid var(--line)}
+  select,input{font:12px "Microsoft YaHei";padding:3px 6px;border:1px solid #C7CFDA;border-radius:2px;background:#fff}
+  .stat{color:var(--muted)}
+  .layout{display:grid;grid-template-columns:1fr 380px;height:calc(100vh - 48px - 40px);gap:8px;padding:8px}
+  .panel{background:#fff;border:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
+  .panel h3{margin:0;padding:6px 10px;font-size:12px;border-bottom:1px solid var(--line);background:#FAFBFC;font-weight:600}
+  .tbl{flex:1;overflow:auto}
+  table{width:100%;border-collapse:collapse;font-size:12px}
+  th,td{border:1px solid var(--line);padding:4px 8px;text-align:left;white-space:nowrap}
+  th{background:#F7F9FB;font-weight:600;position:sticky;top:0;z-index:1}
+  tbody tr{cursor:pointer}
+  tbody tr:nth-child(even){background:#FCFDFE}
+  tbody tr:hover{background:#EEF5FD}
+  tbody tr.sel{background:#E6F1FB}
+  .muted{color:var(--muted)}
+  .tag{display:inline-block;padding:0 5px;border-radius:2px;font-size:11px;line-height:16px}
+  .t-out{background:#FCEBEB;color:#7A1F1F}
+  .t-ihs{background:#FAEEDA;color:#7A4A0B}
+  .t-ok{background:#E1F5EE;color:#0B5344}
+  .t-feat{background:#E6F1FB;color:#1A4E7C}
+  .pager{display:flex;gap:8px;padding:6px 10px;border-top:1px solid var(--line);align-items:center;background:#FAFBFC}
+  button{font:12px "Microsoft YaHei";padding:3px 10px;border:1px solid #C7CFDA;background:#fff;border-radius:2px;cursor:pointer}
+  button:hover{background:#F3F6FA}
+  button:disabled{opacity:.4;cursor:default}
+  .drawer{display:flex;flex-direction:column;min-height:0}
+  .drawer .body{flex:1;overflow:auto;padding:8px 10px}
+  .kv{display:grid;grid-template-columns:78px 1fr;gap:4px 8px;margin-bottom:8px}
+  .kv .k{color:var(--muted)}
+  .sec{margin:10px 0 4px;font-weight:600;color:#374151;border-bottom:1px solid #EEF1F5;padding-bottom:3px}
+  .tl{list-style:none;margin:0;padding:0}
+  .tl li{position:relative;padding:3px 0 3px 14px;border-left:1px solid #E3E8EF;margin-left:4px}
+  .tl li:before{content:"";position:absolute;left:-3px;top:9px;width:5px;height:5px;border-radius:50%;background:#9CA3AF}
+  .tl li.in:before{background:var(--ok)} .tl li.warn:before{background:var(--danger)}
+  .tl .tm{font-family:Consolas,monospace;color:var(--muted);margin-right:6px}
+  .src{display:inline-block;font-size:10px;padding:0 4px;border-radius:2px;margin-left:4px}
+  .s-detector{background:#E1F5EE;color:#0B5344}
+  .s-interface{background:#E6F1FB;color:#1A4E7C}
+  .s-manual{background:#FAEEDA;color:#7A4A0B}
+  .empty{color:#9CA3AF;padding:20px;text-align:center}
+</style>
+</head>
+<body>
+<header>
+  <span class="title">病例列表</span>
+  <span class="stat" id="count">—</span>
+  <div class="right"><a href="/">首页</a><a href="/qc">质控报表</a><a href="/followups">随访工作台</a><a href="/monitor">← 术中监控</a></div>
+</header>
+
+<div class="filters">
+  <label>期间 <select id="fPeriod"><option value="">全部</option></select></label>
+  <label>病区 <select id="fDept"><option value="">全部</option></select></label>
+  <label>类型 <select id="fType"><option value="">全部</option></select></label>
+  <label><input type="checkbox" id="fElig"> 只看纳入质控的</label>
+  <button id="btnQuery">查询</button>
+  <span class="stat" id="hint">点击行查看详情</span>
+</div>
+
+<div class="layout">
+  <section class="panel">
+    <h3>病例（按到院时间倒序）</h3>
+    <div class="tbl">
+      <table>
+        <thead><tr>
+          <th>病例号</th><th>病区</th><th>类型</th><th>纳入</th><th>到院</th>
+          <th>DNT</th><th>DPT</th><th>mTICI</th><th>出院</th><th>标记</th>
+        </tr></thead>
+        <tbody id="rows"><tr><td colspan="10" class="empty">加载中…</td></tr></tbody>
+      </table>
+    </div>
+    <div class="pager">
+      <button id="prev">‹ 上一页</button>
+      <button id="next">下一页 ›</button>
+      <span id="pageInfo" class="muted"></span>
+    </div>
+  </section>
+
+  <aside class="panel drawer">
+    <h3>病例详情</h3>
+    <div class="body" id="detail"><div class="empty">未选择病例</div></div>
+  </aside>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const S = { limit: 50, offset: 0, total: 0, rows: [], cur: null };
+const TYPE_CN = {ais:'缺血性',ich:'脑出血',sah:'蛛网膜下腔',cvt:'静脉窦',ihs:'院内卒中'};
+const DIS_CN = {home:'回家',rehab:'康复',transfer:'转院',death:'死亡',against_advice:'自动出院'};
+
+async function jget(u){ const r = await fetch(u); if(!r.ok){ const t = await r.text(); throw new Error(r.status+' '+t); } return r.json(); }
+function fmtT(s){ return s ? s.replace('T',' ').slice(0,16) : '—'; }
+function num(v, unit){ return v==null ? '—' : v + unit; }
+
+function typeTag(r){
+  const cn = TYPE_CN[r.case_type] || r.case_type;
+  if(r.is_ihs) return `<span class="tag t-ihs">院内</span>`;
+  return cn;
+}
+function eligTag(r){
+  if(r.exclude_reason) return `<span class="tag t-out">排除</span>`;
+  if(r.case_type!=='ais' || r.is_ihs) return `<span class="tag t-out">不进分母</span>`;
+  return `<span class="tag t-ok">纳入</span>`;
+}
+function dmTag(v, limit){
+  if(v==null) return '<span class="muted">—</span>';
+  return v<=limit ? v : `<span style="color:#A32D2D">${v}</span>`;
+}
+
+function renderRows(){
+  const tb = $('#rows');
+  if(!S.rows.length){ tb.innerHTML = '<tr><td colspan="10" class="empty">没有符合条件的病例</td></tr>'; return; }
+  tb.innerHTML = S.rows.map(r => `
+    <tr data-no="${r.case_no}" class="${S.cur===r.case_no?'sel':''}">
+      <td>${r.case_no}${r.is_featured?' <span class="tag t-feat">重点</span>':''}</td>
+      <td>${r.dept_name||r.dept_id||'—'}</td>
+      <td>${typeTag(r)}</td>
+      <td>${eligTag(r)}</td>
+      <td>${fmtT(r.arrival_at)}</td>
+      <td>${dmTag(r.dnt,60)}</td>
+      <td>${dmTag(r.dpt,90)}</td>
+      <td>${r.mtici||'—'}</td>
+      <td>${DIS_CN[r.discharge_type]||r.discharge_type||'—'}</td>
+      <td>${r.is_transfer?'<span class="tag t-ihs">转入</span>':''}</td>
+    </tr>`).join('');
+  tb.querySelectorAll('tr').forEach(tr => tr.onclick = () => loadDetail(tr.dataset.no));
+}
+
+async function loadList(){
+  $('#rows').innerHTML = '<tr><td colspan="10" class="empty">加载中…</td></tr>';
+  const q = new URLSearchParams({
+    limit: S.limit, offset: S.offset,
+    ...(($('#fPeriod').value) && {period: $('#fPeriod').value}),
+    ...(($('#fDept').value) && {dept: $('#fDept').value}),
+    ...(($('#fType').value) && {type: $('#fType').value}),
+    ...($('#fElig').checked && {only_eligible: 'true'}),
+  });
+  try{
+    const d = await jget('/api/cases?' + q);
+    S.rows = d.rows; S.total = d.total;
+    $('#count').textContent = `共 ${d.total} 例`;
+    $('#pageInfo').textContent = `${S.offset+1}–${Math.min(S.offset+S.limit, d.total)} / ${d.total}`;
+    $('#prev').disabled = S.offset === 0;
+    $('#next').disabled = S.offset + S.limit >= d.total;
+    renderRows();
+  }catch(e){
+    $('#rows').innerHTML = `<tr><td colspan="10" class="empty">加载失败：${e.message}</td></tr>`;
+  }
+}
+
+async function loadDetail(caseNo){
+  S.cur = caseNo; renderRows();
+  const box = $('#detail');
+  box.innerHTML = '<div class="empty">加载中…</div>';
+  try{
+    const d = await jget('/api/cases/' + caseNo);
+    const c = d.case;
+    const src = d.source_stat || {};
+    const srcStr = Object.entries(src).map(([k,v])=>`<span class="src s-${k}">${k} ${v}</span>`).join(' ') || '—';
+
+    const ms = d.milestones.map(m => {
+      const t = m.occurred_at ? m.occurred_at.replace('T',' ').slice(0,19)
+              : (m.seq_ts_ms!=null ? m.seq_ts_ms + 'ms（序列）' : '—');
+      const cls = m.voided ? '' : (m.code.startsWith('device') ? 'in' : '');
+      return `<li class="${cls}"><span class="tm">${t}</span>${m.name||m.code}
+        <span class="src s-${m.source}">${m.source}</span>
+        ${m.voided?'<span class="tag t-out">已作废</span>':''}</li>`;
+    }).join('') || '<li class="muted">无节点记录</li>';
+
+    const comps = d.complications.length
+      ? d.complications.map(x=>`<li><span class="tm">${(x.occurred_at||'').slice(0,10)}</span>${x.type}（${x.severity||'—'}）${x.criterion||''}</li>`).join('')
+      : '<li class="muted">无</li>';
+
+    const plans = d.followup_plans.length
+      ? d.followup_plans.map(p=>`<li><span class="tm">${p.due_date}</span>${p.node} · ${p.status}</li>`).join('')
+      : '<li class="muted">无</li>';
+
+    box.innerHTML = `
+      <div class="kv">
+        <div class="k">病例号</div><div>${c.case_no}</div>
+        <div class="k">病区</div><div>${c.dept_name||c.dept_id||'—'}</div>
+        <div class="k">类型</div><div>${TYPE_CN[c.case_type]||c.case_type}${c.is_ihs?'（院内）':''}</div>
+        <div class="k">纳入</div><div>${c.exclude_reason ? '排除：'+c.exclude_reason : '纳入质控分母'}</div>
+        <div class="k">年龄/性别</div><div>${c.age??'—'} / ${c.sex==='M'?'男':'女'}</div>
+        <div class="k">到院</div><div>${fmtT(c.arrival_at)}</div>
+        <div class="k">出院</div><div>${fmtT(c.discharge_at)} · ${DIS_CN[c.discharge_type]||'—'}</div>
+        <div class="k">NIHSS</div><div>${c.nihss??'—'} ｜ ASPECTS ${c.aspects??'—'} ｜ mTICI ${c.mtici||'—'}</div>
+        <div class="k">90天 mRS</div><div>${c.mrs_90??'—'}</div>
+        <div class="k">节点来源</div><div>${srcStr}</div>
+      </div>
+      <div class="sec">流程节点（${d.milestones.length}）</div>
+      <ul class="tl">${ms}</ul>
+      <div class="sec">并发症</div>
+      <ul class="tl">${comps}</ul>
+      <div class="sec">随访计划</div>
+      <ul class="tl">${plans}</ul>
+      ${c.case_no.startsWith('CZ-DEMO')
+        ? `<div style="margin-top:10px"><a href="/monitor" style="color:#1A5FB4">▶ 打开术中监控回放</a></div>` : ''}
+    `;
+  }catch(e){
+    box.innerHTML = `<div class="empty">加载失败：${e.message}</div>`;
+  }
+}
+
+(async function init(){
+  try{
+    const m = await jget('/api/meta');
+    if(m.online){
+      $('#fPeriod').innerHTML = '<option value="">全部</option>' +
+        m.periods.map(p=>`<option value="${p}">${p}</option>`).join('');
+      $('#fDept').innerHTML = '<option value="">全部</option>' +
+        m.depts.map(d=>`<option value="${d.id}">${d.name}</option>`).join('');
+      $('#fType').innerHTML = '<option value="">全部</option>' +
+        m.types.map(t=>`<option value="${t}">${TYPE_CN[t]||t}</option>`).join('');
+      $('#fPeriod').value = '2026-10';
+    }
+  }catch(e){ /* 忽略 */ }
+  await loadList();
+})();
+
+$('#btnQuery').onclick = () => { S.offset = 0; loadList(); };
+$('#prev').onclick = () => { S.offset = Math.max(0, S.offset - S.limit); loadList(); };
+$('#next').onclick = () => { S.offset += S.limit; loadList(); };
+</script>
+<script src="/static/degrade.js"></script>
+<script src="/static/nav.js"></script>
+</body>
+</html>

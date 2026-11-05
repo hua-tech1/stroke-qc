@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>随访工作台 · 卒中绿色通道质控台</title>
+<style>
+  :root{--hdr:#1A5FB4;--line:#D9DEE6;--bg:#F0F2F5;--ink:#1F2937;--muted:#6B7280;
+        --ok:#0F6E56;--warn:#854F0B;--danger:#A32D2D;}
+  *{box-sizing:border-box}
+  body{margin:0;font:12px/1.5 "Microsoft YaHei","PingFang SC",sans-serif;color:var(--ink);background:var(--bg)}
+  header{height:48px;background:var(--hdr);color:#fff;display:flex;align-items:center;gap:14px;padding:0 14px}
+  header .title{font-size:14px;font-weight:600}
+  header .right{margin-left:auto;display:flex;gap:10px;align-items:center;font-size:12px}
+  header a{color:#fff;text-decoration:none;border:1px solid rgba(255,255,255,.45);padding:2px 8px;border-radius:2px}
+  .tabs{display:flex;gap:0;background:#fff;border-bottom:1px solid var(--line);padding:0 8px}
+  .tab{padding:8px 16px;cursor:pointer;border-bottom:2px solid transparent;color:#4B5563}
+  .tab .n{font-weight:600;margin-left:6px}
+  .tab.on{border-bottom-color:var(--hdr);color:var(--hdr);font-weight:600}
+  .tab.warn .n{color:var(--danger)}
+  .layout{display:grid;grid-template-columns:1fr 400px;height:calc(100vh - 48px - 37px);gap:8px;padding:8px}
+  .panel{background:#fff;border:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
+  .panel h3{margin:0;padding:6px 10px;font-size:12px;border-bottom:1px solid var(--line);background:#FAFBFC;font-weight:600}
+  .tbl{flex:1;overflow:auto}
+  table{width:100%;border-collapse:collapse;font-size:12px}
+  th,td{border:1px solid var(--line);padding:4px 8px;text-align:left;white-space:nowrap}
+  th{background:#F7F9FB;font-weight:600;position:sticky;top:0}
+  tbody tr{cursor:pointer}
+  tbody tr:nth-child(even){background:#FCFDFE}
+  tbody tr:hover{background:#EEF5FD}
+  tbody tr.sel{background:#E6F1FB}
+  .muted{color:var(--muted)}
+  .tag{display:inline-block;padding:0 5px;border-radius:2px;font-size:11px;line-height:16px}
+  .b-today{background:#E6F1FB;color:#1A4E7C}
+  .b-overdue{background:#FCEBEB;color:#7A1F1F}
+  .b-lost{background:#F1EFE8;color:#4B4B48}
+  .b-completed{background:#E1F5EE;color:#0B5344}
+  .b-upcoming{background:#F7F9FB;color:#6B7280}
+  .b-refused,.b-deceased{background:#F1EFE8;color:#6B7280}
+  .red{color:var(--danger)}
+  .pager{display:flex;gap:8px;padding:6px 10px;border-top:1px solid var(--line);align-items:center;background:#FAFBFC}
+  button{font:12px "Microsoft YaHei";padding:3px 10px;border:1px solid #C7CFDA;background:#fff;border-radius:2px;cursor:pointer}
+  button:hover{background:#F3F6FA}
+  button.primary{background:var(--hdr);color:#fff;border-color:var(--hdr)}
+  button:disabled{opacity:.4;cursor:default}
+  .drawer .body{flex:1;overflow:auto;padding:10px}
+  .kv{display:grid;grid-template-columns:74px 1fr;gap:5px 8px;margin-bottom:10px}
+  .kv .k{color:var(--muted)}
+  .sec{margin:12px 0 6px;font-weight:600;border-bottom:1px solid #EEF1F5;padding-bottom:3px;color:#374151}
+  .mrs{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+  .mrs label{border:1px solid #C7CFDA;text-align:center;padding:5px 0;border-radius:2px;cursor:pointer;font-size:11px}
+  .mrs input{display:none}
+  .mrs input:checked + span{font-weight:600}
+  .mrs label.on{background:var(--hdr);color:#fff;border-color:var(--hdr)}
+  .mrs-hint{color:var(--muted);font-size:11px;margin-top:4px;min-height:16px}
+  .row{display:flex;gap:6px;align-items:center;margin:6px 0}
+  .row label{min-width:64px;color:var(--muted)}
+  .row select,.row input{flex:1;font:12px "Microsoft YaHei";padding:3px 6px;border:1px solid #C7CFDA;border-radius:2px}
+  .msg{padding:6px 8px;margin:8px 0;border-radius:2px;font-size:11px;display:none}
+  .msg.ok{display:block;background:#E1F5EE;color:#0B5344}
+  .msg.err{display:block;background:#FCEBEB;color:#7A1F1F}
+  .tl{list-style:none;margin:0;padding:0}
+  .tl li{padding:3px 0 3px 12px;border-left:1px solid #E3E8EF;margin-left:3px;position:relative}
+  .tl li:before{content:"";position:absolute;left:-3px;top:9px;width:5px;height:5px;border-radius:50%;background:#9CA3AF}
+  .tl .tm{font-family:Consolas,monospace;color:var(--muted);margin-right:6px}
+  .empty{color:#9CA3AF;padding:24px;text-align:center}
+</style>
+</head>
+<body>
+<header>
+  <span class="title">随访工作台</span>
+  <span style="opacity:.85" id="today"></span>
+  <div class="right">
+    <a href="/">首页</a><a href="/cases">病例列表</a><a href="/qc">质控报表</a><a href="/monitor">术中监控</a>
+  </div>
+</header>
+
+<div class="tabs" id="tabs"></div>
+
+<div class="layout">
+  <section class="panel">
+    <h3 id="listTitle">今日待访</h3>
+    <div class="tbl">
+      <table>
+        <thead><tr>
+          <th>病例号</th><th>姓名</th><th>病区</th><th>节点</th><th>窗口</th>
+          <th>逾期</th><th>已联系</th><th>上次 mRS</th><th>状态</th>
+        </tr></thead>
+        <tbody id="rows"><tr><td colspan="9" class="empty">加载中…</td></tr></tbody>
+      </table>
+    </div>
+    <div class="pager">
+      <button id="prev">‹ 上一页</button><button id="next">下一页 ›</button>
+      <span class="muted" id="pageInfo"></span>
+    </div>
+  </section>
+
+  <aside class="panel drawer">
+    <h3>随访详情</h3>
+    <div class="body" id="detail"><div class="empty">点左侧任意一条查看</div></div>
+  </aside>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const S = { bucket:'today', limit:50, offset:0, rows:[], cur:null, counts:{}, all:[] };
+const NODE_CN = {discharge:'出院', m1:'1个月', m3:'3个月', m6:'6个月', m12:'12个月'};
+const MRS_DEF = ['完全无症状','无明显残疾','轻度残疾','中度残疾','中重度残疾','重度残疾','死亡'];
+const BUCKETS = [['today','今日待访'],['overdue','逾期'],['lost','失访'],['completed','已完成']];
+
+async function jget(u){ const r=await fetch(u); if(!r.ok) throw new Error(await r.text()); return r.json(); }
+async function jpost(u,b){ const r=await fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b||{})});
+  const t=await r.text(); if(!r.ok) throw new Error(t); return t?JSON.parse(t):{}; }
+
+function renderTabs(){
+  $('#tabs').innerHTML = BUCKETS.map(([k,cn])=>{
+    const n = S.counts[k] ?? 0;
+    const cls = (k==='overdue'&&n>0) ? 'tab warn' : 'tab';
+    return `<div class="${cls} ${S.bucket===k?'on':''}" data-k="${k}">${cn}<span class="n">${n}</span></div>`;
+  }).join('');
+  $('#tabs').querySelectorAll('.tab').forEach(t => t.onclick = ()=>{
+    S.bucket = t.dataset.k; S.offset = 0; loadList();
+  });
+}
+
+function renderRows(){
+  const tb = $('#rows');
+  if(!S.rows.length){ tb.innerHTML = '<tr><td colspan="9" class="empty">该分组暂无记录</td></tr>'; return; }
+  tb.innerHTML = S.rows.map(r=>`
+    <tr data-id="${r.id}" class="${S.cur===r.id?'sel':''}">
+      <td>${r.case_no}</td>
+      <td>${r.patient_name||'—'}</td>
+      <td>${r.dept_name||'—'}</td>
+      <td>${NODE_CN[r.node]||r.node}</td>
+      <td>${r.window_start} ~ ${r.window_end}</td>
+      <td>${r.overdue_days>0?`<span class="red">${r.overdue_days} 天</span>`:'—'}</td>
+      <td>${r.attempts||'0'} 次</td>
+      <td>${r.last_mrs??'—'}</td>
+      <td><span class="tag b-${r.bucket}">${r.bucket==='today'?'待访':r.bucket==='overdue'?'逾期':r.bucket==='lost'?'失访':r.bucket==='completed'?'完成':r.bucket}</span></td>
+    </tr>`).join('');
+  tb.querySelectorAll('tr').forEach(tr => tr.onclick = ()=> openDetail(+tr.dataset.id));
+}
+
+async function loadList(){
+  $('#rows').innerHTML = '<tr><td colspan="9" class="empty">加载中…</td></tr>';
+  const q = new URLSearchParams({bucket:S.bucket, limit:S.limit, offset:S.offset});
+  try{
+    const d = await jget('/api/followups?'+q);
+    S.rows = d.rows; S.counts = d.counts;
+    $('#today').textContent = '系统日期 ' + d.today;
+    $('#listTitle').textContent = d.bucket_cn[S.bucket] + `（${d.total}）`;
+    $('#pageInfo').textContent = `${S.offset+1}–${Math.min(S.offset+S.limit,d.total)} / ${d.total}`;
+    $('#prev').disabled = S.offset===0;
+    $('#next').disabled = S.offset+S.limit >= d.total;
+    renderTabs(); renderRows();
+  }catch(e){
+    $('#rows').innerHTML = `<tr><td colspan="9" class="empty">加载失败：${e.message}</td></tr>`;
+  }
+}
+
+function mrsPicker(cur){
+  return `<div class="mrs" id="mrsBox">` + MRS_DEF.map((d,i)=>
+    `<label class="${cur===i?'on':''}" data-v="${i}"><input type="radio" name="mrs" value="${i}" ${cur===i?'checked':''}><span>${i}</span></label>`
+  ).join('') + `</div><div class="mrs-hint" id="mrsHint">${cur!=null?MRS_DEF[cur]:'选择 mRS 评分'}</div>`;
+}
+
+async function openDetail(id){
+  S.cur = id; renderRows();
+  const box = $('#detail');
+  const r = (await jget(`/api/followups?bucket=&limit=500&offset=0`)).rows.find(x=>x.id===id);
+  if(!r){ box.innerHTML='<div class="empty">未找到该记录</div>'; return; }
+
+  const canAct = !['completed','lost','deceased'].includes(r.status);
+  box.innerHTML = `
+    <div class="kv">
+      <div class="k">病例</div><div>${r.case_no} · ${r.patient_name||''}</div>
+      <div class="k">病区</div><div>${r.dept_name||'—'}</div>
+      <div class="k">节点</div><div>${NODE_CN[r.node]||r.node}（窗口 ${r.window_start} ~ ${r.window_end}）</div>
+      <div class="k">逾期</div><div>${r.overdue_days>0?`<span class="red">${r.overdue_days} 天</span>`:'未逾期'}</div>
+      <div class="k">已联系</div><div>${r.attempts} 次 ${r.attempts>=3?'<span class="tag b-completed">已满 3 次</span>':'<span class="tag b-upcoming">不足 3 次</span>'}</div>
+      <div class="k">上次 mRS</div><div>${r.last_mrs??'—'}</div>
+    </div>
+    <div class="msg" id="msg"></div>
+
+    <div class="sec">录入随访结果</div>
+    ${canAct ? `
+      ${mrsPicker(r.last_mrs)}
+      <div class="row"><label>信息来源</label>
+        <select id="fSource">
+          <option value="patient">患者本人</option>
+          <option value="family" selected>家属代述</option>
+          <option value="outpatient">门诊</option>
+          <option value="phone">电话</option>
+        </select>
+      </div>
+      <div class="row"><label>备注</label><input id="fNote" placeholder="可选"></div>
+      <div class="row" style="margin-top:10px">
+        <button class="primary" id="btnSave">提交随访</button>
+        <button id="btnAttempt">记一次联系</button>
+      </div>
+      <div class="row" style="margin-top:6px">
+        <button id="btnLost" ${r.can_lost?'':'disabled'} title="${r.lost_reason||''}">标记失访</button>
+        <button id="btnRefuse">标记拒绝</button>
+      </div>
+      <div class="muted" style="margin-top:4px">${r.can_lost?'':'失访条件未满足：'+ (r.lost_reason||'')}</div>
+    ` : `<div class="muted">该节点已结束（${r.status}），不可再编辑。</div>`}
+
+    <div class="sec">联系记录</div>
+    <ul class="tl" id="attempts"><li class="muted">加载中…</li></ul>
+  `;
+
+  if(canAct){
+    const box2 = $('#mrsBox');
+    box2.querySelectorAll('label').forEach(l => l.onclick = ()=>{
+      box2.querySelectorAll('label').forEach(x=>x.classList.remove('on'));
+      l.classList.add('on');
+      $('#mrsHint').textContent = MRS_DEF[+l.dataset.v];
+    });
+    $('#btnSave').onclick = ()=> submit(id);
+    $('#btnAttempt').onclick = ()=> attempt(id);
+    $('#btnLost').onclick = ()=> lost(id);
+    $('#btnRefuse').onclick = ()=> refuse(id);
+  }
+  loadAttempts(id, r);
+}
+
+async function loadAttempts(id, r){
+  const ul = $('#attempts');
+  try{
+    const d = await jget(`/api/followups/${id}/attempts`);
+    ul.innerHTML = d.rows.length
+      ? d.rows.map(a=>`<li><span class="tm">${(a.attempted_at||'').slice(0,16).replace('T',' ')}</span>${a.channel} · ${a.result}${a.note?' · '+a.note:''}</li>`).join('')
+      : '<li class="muted">暂无联系记录</li>';
+  }catch(e){ ul.innerHTML = '<li class="muted">联系记录接口未实现</li>'; }
+}
+
+function flash(text, ok=true){
+  const m = $('#msg'); m.className = 'msg ' + (ok?'ok':'err'); m.textContent = text;
+  setTimeout(()=>{ m.className='msg'; }, 4000);
+}
+
+async function submit(id){
+  const sel = document.querySelector('#mrsBox input:checked');
+  if(!sel) return flash('请先选择 mRS', false);
+  try{
+    await jpost(`/api/followups/${id}/record`, {
+      mrs: +sel.value, source: $('#fSource').value, note: $('#fNote').value || null
+    });
+    flash('已提交，节点转为「已完成」');
+    await loadList(); S.cur = null; $('#detail').innerHTML = '<div class="empty">已提交</div>';
+  }catch(e){ flash('提交失败：'+e.message, false); }
+}
+
+async function attempt(id){
+  try{
+    const d = await jpost(`/api/followups/${id}/attempt`, {channel:'phone', result:'no_answer'});
+    flash(`已记录第 ${d.attempts} 次联系`);
+    await loadList(); await openDetail(id);
+  }catch(e){ flash('记录失败：'+e.message, false); }
+}
+
+async function lost(id){
+  try{
+    await jpost(`/api/followups/${id}/lost`, {});
+    flash('已标记失访');
+    await loadList(); $('#detail').innerHTML='<div class="empty">已标记失访</div>';
+  }catch(e){ flash('无法标记：'+e.message, false); }
+}
+
+async function refuse(id){
+  try{
+    await jpost(`/api/followups/${id}/refuse`, {});
+    flash('已标记拒绝');
+    await loadList(); $('#detail').innerHTML='<div class="empty">已标记拒绝</div>';
+  }catch(e){ flash('失败：'+e.message, false); }
+}
+
+$('#prev').onclick = ()=>{ S.offset=Math.max(0,S.offset-S.limit); loadList(); };
+$('#next').onclick = ()=>{ S.offset+=S.limit; loadList(); };
+loadList();
+</script>
+<script src="/static/degrade.js"></script>
+<script src="/static/nav.js"></script>
+</body>
+</html>

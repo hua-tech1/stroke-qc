@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>数据说明 · 卒中绿色通道质控台</title>
+<style>
+  :root{--hdr:#1A5FB4;--line:#D9DEE6;--bg:#F0F2F5;--ink:#1F2937;--muted:#6B7280;
+        --ok:#0F6E56;--warn:#854F0B;--danger:#A32D2D;}
+  *{box-sizing:border-box}
+  body{margin:0;font:13px/1.65 "Microsoft YaHei","PingFang SC",sans-serif;color:var(--ink);background:var(--bg)}
+  header{height:48px;background:var(--hdr);color:#fff;display:flex;align-items:center;gap:14px;padding:0 16px}
+  header .title{font-size:14px;font-weight:600}
+  header .right{margin-left:auto;display:flex;gap:8px;font-size:12px}
+  header a{color:#fff;text-decoration:none;border:1px solid rgba(255,255,255,.45);padding:2px 8px;border-radius:2px}
+  .wrap{max-width:1080px;margin:0 auto;padding:20px 20px 44px}
+
+  .banner{border:1px solid #F0DCA0;background:#FFF9E8;padding:12px 16px;margin-bottom:16px}
+  .banner b{color:#7A4A0B}
+  .banner p{margin:4px 0 0;color:#6B5520}
+
+  section{background:#fff;border:1px solid var(--line);padding:16px 18px;margin-bottom:14px}
+  h2{margin:0 0 4px;font-size:15px;font-weight:600}
+  h2 .n{color:var(--muted);font-weight:400;font-size:12px;margin-right:6px}
+  .sub{color:var(--muted);margin:0 0 12px}
+
+  table{width:100%;border-collapse:collapse;font-size:12px}
+  th,td{border:1px solid var(--line);padding:4px 8px;text-align:left;vertical-align:top}
+  th{background:#F7F9FB;font-weight:600;white-space:nowrap}
+  tbody tr:nth-child(even){background:#FCFDFE}
+  td.k{white-space:nowrap;color:#374151}
+  td.v{font-family:Consolas,monospace;white-space:nowrap}
+  .ref{color:var(--muted);font-size:11px}
+
+  .dist{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+  .dist .d{border:1px solid var(--line);padding:4px 10px;font-size:12px;background:#FAFBFC}
+  .dist .d b{font-size:15px;margin-left:4px;font-family:Consolas,monospace}
+
+  .src{display:inline-block;padding:0 6px;border-radius:2px;font-size:11px;line-height:16px;white-space:nowrap}
+  .s-dataset{background:#E1F5EE;color:#0B5344}
+  .s-literature{background:#E6F1FB;color:#1A4E7C}
+  .s-guideline{background:#E6F1FB;color:#1A4E7C}
+  .s-assumption{background:#FAEEDA;color:#7A4A0B}
+
+  .cmp{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .cmp .col{border:1px solid var(--line);padding:8px 10px}
+  .cmp .col h4{margin:0 0 6px;font-size:12px;color:var(--muted);font-weight:600}
+  .bar{height:14px;background:#EEF1F5;position:relative;margin:3px 0 8px}
+  .bar i{position:absolute;left:0;top:0;bottom:0;background:var(--hdr)}
+  .bar i.alt{background:#9CBEE0}
+
+  ul.lim{margin:0;padding-left:18px}
+  ul.lim li{margin:4px 0}
+  ul.lim.cannot li{color:#7A1F1F}
+
+  .lic{border:1px solid var(--line);padding:8px 10px;margin-bottom:8px}
+  .lic .t{display:flex;justify-content:space-between;gap:10px}
+  .lic .t b{font-weight:600}
+  .risk{font-size:11px;padding:0 6px;border-radius:2px;line-height:16px}
+  .r-high{background:#FCEBEB;color:#7A1F1F}
+  .r-medium{background:#FAEEDA;color:#7A4A0B}
+  .r-low{background:#E1F5EE;color:#0B5344}
+  code{background:#F3F4F6;padding:1px 5px;border-radius:2px;font-family:Consolas,monospace;font-size:12px}
+  .foot{color:var(--muted);font-size:11px;text-align:center;margin-top:16px}
+  @media(max-width:860px){.cmp{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header>
+  <span class="title">数据说明</span>
+  <div class="right">
+    <a href="/">← 首页</a>
+    <a href="/qc">质控报表</a>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="banner">
+    <b>本系统当前运行在仿真队列上</b>
+    <p>600 例病例、2,250 条随访计划、全部时间节点均由参数化生成器产出（种子 42，可复现）。
+       除两段演示影像外，<b>没有任何真实患者数据</b>。以下逐项说明每个参数的出处。</p>
+  </div>
+
+  <section>
+    <h2><span class="n">01</span>队列规模</h2>
+    <p class="sub">生成器一次产出的数据量。数字随种子固定，重跑不会变。</p>
+    <div class="dist" id="dist"></div>
+    <table>
+      <tbody id="counts"></tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2><span class="n">02</span>参数来源 <span class="sub" style="display:inline">共 <b id="ptotal">—</b> 项，每项都标出处</span></h2>
+    <p class="sub">
+      分四类：<span class="src s-dataset">公开数据集实测</span>
+      <span class="src s-guideline">指南／规范</span>
+      <span class="src s-literature">临床文献区间</span>
+      <span class="src s-assumption">工程假设</span>
+      ——「工程假设」不冒充文献，评委可以据此判断哪些数不能当证据用。
+    </p>
+    <div id="groups"></div>
+  </section>
+
+  <section>
+    <h2><span class="n">03</span>仿真队列 vs 公开数据集</h2>
+    <p class="sub">只比口径可比的项。这一节同时说明两件事：数据是仿真的（诚实），仿真是有依据的（专业）。</p>
+    <div class="cmp" id="cmp"></div>
+    <p class="ref" id="cmpNote" style="margin:8px 0 0"></p>
+  </section>
+
+  <section>
+    <h2><span class="n">04</span>数据与许可</h2>
+    <p class="sub">影像许可状态是硬约束，不是「建议注意」。</p>
+    <div id="lics"></div>
+  </section>
+
+  <section>
+    <h2><span class="n">05</span>这个系统能证明什么、不能证明什么</h2>
+    <p class="sub">把边界写在前面，比被问出来强。</p>
+    <div class="cmp">
+      <div class="col">
+        <h4>能证明</h4>
+        <ul class="lim" id="can"></ul>
+      </div>
+      <div class="col">
+        <h4>不能证明</h4>
+        <ul class="lim cannot" id="cannot"></ul>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="n">06</span>怎么复现</h2>
+    <p class="sub">同一种子重跑，数据完全一致（SHA256 已校验）。</p>
+    <p id="repro"></p>
+  </section>
+
+  <div class="foot" id="foot">—</div>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const SRC_CLS = {'公开数据集实测':'s-dataset','指南／规范':'s-guideline','临床文献区间':'s-literature','工程假设':'s-assumption'};
+
+(async function(){
+  let d;
+  try{ d = await (await fetch('/api/about')).json(); }
+  catch(e){ document.body.insertAdjacentHTML('beforeend','<div class="wrap">数据接口不可用</div>'); return; }
+
+  // 01 规模
+  const c = d.counts;
+  $('#dist').innerHTML = `
+    <div class="d">病例<b>${c.cases}</b></div>
+    <div class="d">随访计划<b>${c.plans}</b></div>
+    <div class="d">随访记录<b>${c.records}</b></div>
+    <div class="d">联系记录<b>${c.attempts}</b></div>`;
+  $('#counts').innerHTML = `
+    <tr><th style="width:180px">项目</th><th>值</th><th>说明</th></tr>
+    <tr><td class="k">时间跨度</td><td class="v">2025-11 ~ 2026-10</td><td class="ref">12 个月，可算同比与整改前后</td></tr>
+    <tr><td class="k">病区</td><td class="v">3 个</td><td class="ref">神内一区 / 神内二区 / 介入病区</td></tr>
+    <tr><td class="k">AIS 病例</td><td class="v">${d.sim_profile.n}</td><td class="ref">进入质控分母的基数</td></tr>
+    <tr><td class="k">随机种子</td><td class="v">${d.seed}</td><td class="ref">同种子重跑结果完全一致</td></tr>
+    <tr><td class="k">生成时间</td><td class="v">${d.generated_at}</td><td class="ref">演示「今天」固定为 ${d.today}</td></tr>`;
+
+  // 02 参数来源
+  $('#ptotal').textContent = d.param_total;
+  $('#groups').innerHTML = d.groups.map(g=>`
+    <div style="margin-bottom:12px">
+      <div style="margin-bottom:4px">
+        <span class="src ${SRC_CLS[g.label]||'s-assumption'}">${g.label}</span>
+        <span class="ref">${g.count} 项</span>
+      </div>
+      <table>
+        <thead><tr><th style="width:210px">参数</th><th style="width:150px">取值</th><th>出处</th></tr></thead>
+        <tbody>${g.rows.map(r=>`
+          <tr><td class="k">${esc(r.name)}</td><td class="v">${esc(r.value)}</td>
+              <td class="ref">${esc(r.ref)}</td></tr>`).join('')}</tbody>
+      </table>
+    </div>`).join('');
+
+  // 03 对比
+  const max = 100;
+  $('#cmp').innerHTML = `
+    <div class="col"><h4>仿真队列（本系统）</h4>
+      ${d.compare.map(x=>`
+        <div>${esc(x.label)} <b style="float:right;font-family:Consolas">${x.sim}${x.unit}</b></div>
+        <div class="bar"><i style="width:${Math.min(100,x.sim/max*100)}%"></i></div>`).join('')}
+    </div>
+    <div class="col"><h4>公开数据集（参照）</h4>
+      ${d.compare.map(x=>`
+        <div>${esc(x.label)} <b style="float:right;font-family:Consolas">${x.pub}${x.unit}</b></div>
+        <div class="bar"><i class="alt" style="width:${Math.min(100,x.pub/max*100)}%"></i></div>`).join('')}
+    </div>`;
+  $('#cmpNote').textContent = d.compare_note;
+
+  // 04 许可
+  const RISK = {high:'高',medium:'中',low:'低'};
+  $('#lics').innerHTML = d.licenses.map(l=>`
+    <div class="lic">
+      <div class="t"><b>${esc(l.name)}</b>
+        <span class="risk r-${l.risk}">风险 ${RISK[l.risk]}</span></div>
+      <div class="ref" style="margin-top:4px">许可：<b>${esc(l.license)}</b></div>
+      <div class="ref">用途：${esc(l.usage)}</div>
+      <div style="color:#7A1F1F;font-size:12px;margin-top:3px">${esc(l.note)}</div>
+    </div>`).join('');
+
+  // 05 边界
+  const md = s => esc(s).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>');
+  $('#can').innerHTML = d.limits.can.map(x=>`<li>${md(x)}</li>`).join('');
+  $('#cannot').innerHTML = d.limits.cannot.map(x=>`<li>${md(x)}</li>`).join('');
+
+  // 06 复现
+  $('#repro').innerHTML = d.reproduce.cmd.map(c=>`<div><code>${esc(c)}</code></div>`).join('')
+    + `<div class="ref" style="margin-top:6px">种子 ${d.reproduce.seed}；同种子两次生成的关键表 SHA256 一致。</div>`;
+
+  $('#foot').textContent = `数据说明 · 生成于 ${d.generated_at} · 参数 ${d.param_total} 项 · 种子 ${d.seed}`;
+})();
+</script>
+</body>
+</html>
