@@ -409,6 +409,12 @@ document.addEventListener('keydown', e => { if(e.key === 'Escape') closeCaseDD()
     const q = new URLSearchParams(location.search);
     const code = (q.get('case') || 'A').toUpperCase();
     await loadCase(cs.sequences.some(x=>x.code===code) ? code : 'A');
+    // ?t=35000 → 把虚拟时钟直接推到该毫秒，便于演示/截取"超时预警"那一刻
+    const tms = parseInt(q.get('t'), 10);
+    if(Number.isFinite(tms) && tms > 0){
+      state.clockMs = tms;
+      updateElapsed(tms);
+    }
     const fr = parseInt(q.get('frame'), 10);
     if(Number.isFinite(fr) && fr >= 0 && fr < state.frames.length){
       state.skipEma = true;
