@@ -160,16 +160,24 @@ def compute(cases, plans, milestones, ctx=None):
     out.append(_r("PR06", len(dnt), len(pool), num_ids=dnt_ids, den_ids=pool_list))
     out.append(_r("PR07", len(dpt), len(pool), num_ids=dpt_ids, den_ids=pool_list))
 
+    # 检测事件按 ts_source 分组配对：simulated 配 simulated、sequence_index 配 sequence_index，
+    # 避免「后写入覆盖先写入」静默篡改（原实现对同 code 多条只保留最后一条）。
+    dev = {}
+    for m in milestones:
+        if m["case_id"] in pool_ids and m["code"] in ("device_visible_start", "device_visible_end"):
+            dev.setdefault(m["case_id"], {}).setdefault(m["ts_source"], {})[m["code"]] = m
+
     dwell = [(cid, (e["seq_ts_ms"] - s["seq_ts_ms"]) / 1000.0)
-             for cid, d in ev.items()
-             if (s := d.get("device_visible_start")) and (e := d.get("device_visible_end"))
+             for cid, d in dev.items()
+             if (s := d.get("simulated", {}).get("device_visible_start"))
+             and (e := d.get("simulated", {}).get("device_visible_end"))
              and e["seq_ts_ms"] > s["seq_ts_ms"]]
     out.append(_r("PR08", len(dwell), len(dwell),
                   median([v for _, v in dwell]) if dwell else None,
                   num_ids=[i for i, _ in dwell], den_ids=[i for i, _ in dwell]))
 
-    started = [cid for cid, d in ev.items() if "device_visible_start" in d]
-    unclosed = [cid for cid in started if "device_visible_end" not in ev[cid]]
+    started = [cid for cid, d in dev.items() if "device_visible_start" in d.get("simulated", {})]
+    unclosed = [cid for cid in started if "device_visible_end" not in dev[cid].get("simulated", {})]
     out.append(_r("PR09", len(unclosed), len(started),
                   num_ids=unclosed, den_ids=started))
 

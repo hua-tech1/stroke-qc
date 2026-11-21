@@ -65,6 +65,13 @@
   .progress i{position:absolute;left:0;top:0;bottom:0;width:0;background:var(--hdr)}
   .dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--ok);margin-right:4px}
   .dot.bad{background:var(--danger)}
+  .strip{height:22px;background:#111;display:flex;align-items:stretch;padding:3px 0;cursor:crosshair;overflow:hidden}
+  .strip i{flex:1 1 1px;margin:0 .5px;border-radius:1px;min-width:1px}
+  .strip i.hit{background:var(--box)}
+  .strip i.miss{background:#2A2E33}
+  .strip i.ev{background:var(--danger)}
+  .strip i.cur{outline:1px solid #fff;outline-offset:-1px}
+  .striptip{height:16px;line-height:16px;padding:0 10px;font-size:10px;color:#9CA3AF;background:#111;font-family:Consolas,monospace}
 </style>
 </head>
 <body>
@@ -96,6 +103,8 @@
         <div class="badge" id="badge">帧 0 / 0</div>
       </div>
     </div>
+    <div class="strip" id="strip"></div>
+    <div class="striptip" id="stripTip">悬停帧条查看连续确认过程</div>
     <div class="alert" id="alert"></div>
     <div class="bar">
       <button class="primary" id="play">播放</button>
@@ -125,6 +134,56 @@
         <div class="sub" id="elapsedSub">当前无器械在场</div>
       </div>
     </section>
+
+    <section class="panel">
+      <h3>事件级自检（EFO）</h3>
+      <div style="padding:8px 10px;display:flex;flex-direction:column;gap:6px">
+        <div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--ink)">
+          <span>结构性盲区</span><b id="eaBlind" style="font-family:Consolas,monospace">—</b>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--ink)">
+          <span>检出上界（p=0.95）</span><b id="eaBound" style="font-family:Consolas,monospace">—</b>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--ink)">
+          <span>滞留偏置（中心口径）</span><b id="eaBias" style="font-family:Consolas,monospace">—</b>
+        </div>
+        <div style="color:var(--muted);font-size:10px;line-height:1.4">与模型精度无关，由「连续 k 帧确认」规则本身决定。</div>
+      </div>
+    </section>
+    <script>
+      (async () => {
+        try {
+          const r = await fetch('/api/demo/event-audit');
+          if (!r.ok) return;
+          const d = await r.json();
+          document.getElementById('eaBlind').textContent = d.blind_zone_ms + ' ms';
+          document.getElementById('eaBound').textContent = d.detection_upper_bound;
+          document.getElementById('eaBias').textContent = '+' + d.dwell_bias_center_ms + ' ms';
+        } catch (e) {}
+      })();
+    </script>
+
+    <section class="panel">
+      <h3>量化感知重标定（合成示例）</h3>
+      <div style="padding:8px 10px;display:flex;flex-direction:column;gap:5px;font-size:11px">
+        <div id="qdFrame" style="color:var(--muted)">—</div>
+        <div id="qdEvent" style="color:var(--danger);font-weight:600">—</div>
+        <div id="qdRecover" style="color:var(--ok);font-weight:600">—</div>
+        <div style="color:var(--muted);font-size:10px;line-height:1.4">机制演示：模拟置信度漂移，非真实 INT8 量化。</div>
+      </div>
+    </section>
+    <script>
+      (async () => {
+        try {
+          const r = await fetch('/api/demo/quant-demo');
+          if (!r.ok) return;
+          const d = await r.json();
+          document.getElementById('qdFrame').textContent = d.frame_effect;
+          document.getElementById('qdEvent').textContent = d.event_effect;
+          document.getElementById('qdRecover').textContent = d.recalibrated;
+        } catch (e) {}
+      })();
+    </script>
   </aside>
 </div>
 
@@ -216,12 +275,53 @@ function render(){
   $('#badge').textContent = `帧 ${f.frame} / ${meta.total_frames-1}`;
   $('#frameNo').textContent = `${f.frame} / ${meta.total_frames-1}`;
   $('#prog').style.width = (100*(state.idx+1)/state.frames.length) + '%';
+  markCur();
 
   addEventsUpTo(f.ts_ms);
   updateElapsed(f.ts_ms);
 }
 
 function svgReset(){ $('#ov').innerHTML=''; }
+
+// ---- 状态机帧条：把「连续 k 帧确认」可视化 ----
+function hitAt(i){
+  const conf = (state.cfg && state.cfg.conf) || 0.5;
+  return (state.frames[i].boxes || []).some(b => b.conf >= conf);
+}
+function buildStrip(){
+  const strip = $('#strip'); if(!strip) return;
+  const evMap = {}; state.events.forEach(e => evMap[e.frame] = e);
+  strip.innerHTML = '';
+  state.frames.forEach((f, i) => {
+    const t = document.createElement('i');
+    t.className = evMap[f.frame] ? 'ev' : (hitAt(i) ? 'hit' : 'miss');
+    t.dataset.i = i;
+    strip.appendChild(t);
+  });
+}
+function showTip(i){
+  const evMap = {}; state.events.forEach(e => evMap[e.frame] = e);
+  const hit = hitAt(i);
+  let run = 0, j = i;
+  while(j >= 0 && hitAt(j) === hit){ run++; j--; }
+  const f = state.frames[i];
+  let msg = `帧 ${f.frame} · ${hit ? '命中' : '未命中'} · 已连续 ${run} 帧`;
+  if(evMap[f.frame]) msg += ` · 事件触发：${evMap[f.frame].rule}`;
+  $('#stripTip').textContent = msg;
+}
+function markCur(){
+  const ticks = $('#strip').children;
+  if(!ticks.length) return;
+  const cur = $('#strip i.cur'); if(cur) cur.classList.remove('cur');
+  if(ticks[state.idx]) ticks[state.idx].classList.add('cur');
+}
+$('#strip').addEventListener('mousemove', e => {
+  const t = e.target.closest('i'); if(!t) return;
+  showTip(+t.dataset.i);
+});
+$('#strip').addEventListener('mouseleave', () => {
+  $('#stripTip').textContent = '悬停帧条查看连续确认过程';
+});
 
 $('#img').addEventListener('load', fitOverlay);
 window.addEventListener('resize', fitOverlay);
@@ -343,6 +443,9 @@ async function loadCase(code){
   ]);
   state.frames = fr.frames; state.events = ev.events;
   state.frameMs = fr.frame_ms; state.meta = fr;
+  buildStrip();
+  // 检测事件落库（幂等）：打开演示即把事件写入 milestones，断链补齐
+  fetch(`/api/demo/${code}/events/persist`, { method: 'POST' }).catch(() => {});
   // 阈值跟后端配置走，不在页面里写死（否则改 config 页面不同步）
   state.timeoutMs = (state.cfg && state.cfg.timeout_ms) || 30000;
   const c = cs.sequences.find(x=>x.code===code);

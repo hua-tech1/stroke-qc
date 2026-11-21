@@ -27,7 +27,9 @@ from app.core import data_notes
 from app.core import db
 from app.modules.events.source import FileSequenceSource
 from app.modules.events.state_machine import dwell_ms, generate_events, is_open
+from app.modules.events import sink
 from app.modules.followup import engine as fu
+from app.qc import event_audit as event_audit_mod
 from app.qc import findings as qc_findings_mod
 from app.qc import report as qc_report
 
@@ -53,6 +55,37 @@ def demo_meta(code: str) -> dict:
     if code not in C.SEQUENCES:
         raise HTTPException(404, f"未知演示序列：{code}")
     return C.SEQUENCES[code]
+
+
+@app.get("/api/demo/event-audit")
+def event_audit():
+    """事件级自检：返回当前判据配置下的盲区/偏置/检出上界（EFO 三命题）。"""
+    return event_audit_mod.event_audit()
+
+
+@app.get("/api/demo/quant-demo")
+def quant_demo():
+    """量化感知重标定 · 机制演示（合成示例，非真实 INT8 量化）。
+
+    演示「帧级微小扰动 → 事件级崩坏 → 重标定阈值救回」的完整闭环。
+    """
+    from efo import recalibrate_after_quant
+
+    def frames(confs):
+        return [{"frame": i, "ts_ms": round(i * C.FRAME_MS, 2),
+                 "boxes": [{"conf": c}] if c > 0 else []} for i, c in enumerate(confs)]
+
+    # 背景噪声 0.40（低于阈值），真实段 0.60；量化把「入画窗口」3 帧置信度拉到 0.48（跌破阈值）
+    fp32 = frames([0.40] * 10 + [0.60] * 30 + [0.40] * 10)
+    int8 = frames([0.40] * 10 + [0.48] * 3 + [0.60] * 27 + [0.40] * 10)
+    r = recalibrate_after_quant(fp32, int8, conf_ref=C.CONF, k_in=C.K_IN, m_out=C.M_OUT)
+    return {
+        "demo": "量化感知重标定（合成示例，非真实 INT8）",
+        "frame_effect": "仅入画窗口 3 帧置信度 0.60 → 0.48（帧级几乎无感）",
+        "event_effect": f"事件召回 1.0 → {r['baseline_f1']}（事件级崩坏）",
+        "recalibrated": f"阈值 {r['ref_conf']} → {r['best_conf']} 后事件召回恢复到 {r['best_f1']}",
+        **r,
+    }
 
 
 @app.get("/api/demo")
@@ -92,6 +125,22 @@ def demo_events(code: str):
             "events": [e.dict() for e in events], "event_count": len(events),
             "open": is_open(events), "dwell_ms": dwell_ms(d["frames"], events),
             "params": {"conf": C.CONF, "k_in": C.K_IN, "m_out": C.M_OUT}}
+
+
+@app.post("/api/demo/{code}/events/persist")
+def persist_demo_events(code: str):
+    """检测事件落库：把状态机现算的事件幂等写入 milestones（source=detector, ts_source=sequence_index）。"""
+    meta = demo_meta(code)
+    d = load_detection(meta["seq"])
+    events = generate_events(d["frames"])
+    case_id = sink.case_id_for_case_no(meta["case_no"])
+    if case_id is None:
+        raise HTTPException(500, f"演示病例不存在：{meta['case_no']}")
+    res = sink.persist_events(
+        case_id, events, k_in=C.K_IN, m_out=C.M_OUT,
+        model_ver="yolov8n-guidewire-v1")
+    return {"case": code, "case_no": meta["case_no"], "case_id": case_id,
+            "event_count": len(events), **res}
 
 
 @app.get("/api/demo/{code}/frame/{idx}")

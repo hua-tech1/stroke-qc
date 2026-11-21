@@ -5,5 +5,8 @@ psycopg2-binary==2.9.10
 redis==5.2.1
 pydantic==2.10.4
 
+# 事件级保真（本地开源包，editable 安装）
+-e ./packages/efo
+
 # 仅端到端检查脚本使用
 httpx==0.28.1
