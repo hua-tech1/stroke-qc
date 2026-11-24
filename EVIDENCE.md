@@ -10,9 +10,10 @@
 | ① 华为云 CodeArts 开发 | 未留痕 | — | L0 | 「AI 编码辅助开发」；**不要说「全链路 CodeArts」** |
 | ② 关联 RDS / Redis | 本地已跑通（PG16+Redis7） | `docker-compose.dev.yml`、`migrations/`、`app/core/db.py` | L2 | 「本地同构跑通，云端迁移步骤见附录」 |
 | ③ 华为云部署 | 未执行 | `deploy/RUNBOOK.md`（步骤已就绪） | L0 | 执行 Runbook 后升 L3，见 §0 八项证据 |
-| ④ 开源 | 未公开 | 本仓库 + `packages/efo` | L2 | 公开后附仓库地址与 tag |
+| ④ 开源 | **已公开**：`github.com/hua-tech1/stroke-qc`（83 文件 / 0.23MB，2026-11-21 快照） | 远端仓库 | **L3** | 「已开源；本地新增 `experiments/`、`deploy/`、`EVIDENCE.md` 待同步」 |
 | 昇腾 DVPP 多路 | 设计路线 + 容量测算 | `experiments/ascend/out/capacity_model.md` | **L1** | 「规格推算，未上机」 |
-| **多路并发管线** | **已实现并实测**：容量 / 时延 / 事件一致性 | `experiments/ascend_multichannel/` | **L2** | 「多路管线已跑通，解码为内存帧替代 DVPP」 |
+| **多路并发管线** | **已进系统侧**：`app/modules/events/multichannel.py` + 实测 | `experiments/ascend_multichannel/`、`scripts/check_multichannel.py` | **L2** | 「多路调度已进系统，`check_multichannel.py` 1 秒可复现；解码为内存帧替代 DVPP」 |
+| 推理后端可替换 | `JsonBackend` / `TorchBackend` / `AclBackend` 同接口 | `app/modules/events/backends.py` | L2（接口）/ L0（昇腾） | 「后端接口已预留；昇腾后端**未实现**」 |
 | 昇腾抖动 / 乱序 | 仿真验证 | `experiments/efo/out/`、`packages/efo/jitter.py`、`reorder.py` | L2 | 「仿真，非 DVPP 实测」 |
 
 ## 二、EFO 创新点的证据（本次新增）
