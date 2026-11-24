@@ -89,18 +89,23 @@ if (-not $good) {
 $proxyArgs = $good.Args
 Write-Host ("  采用：{0}" -f $good.Name) -ForegroundColor Green
 if ($good.Name -notmatch "^配置的代理" -and $good.Args.Count -gt 0) {
-  $used = ($good.Args | Where-Object { $_ -match "https.proxy=" }) -replace "^-c$",""
+  $used = ($good.Args | Where-Object { $_ -match "^https\.proxy=" }) -replace "^https\.proxy=", ""
   Write-Host "  提示：可把可用代理写入配置，省去每次探测" -ForegroundColor DarkGray
   Write-Host "    git config --global http.proxy $used" -ForegroundColor DarkGray
   Write-Host "    git config --global https.proxy $used" -ForegroundColor DarkGray
 }
 
 # ---------- 3. remote ----------
-git remote get-url origin 2>$null | Out-Null
-if ($LASTEXITCODE -eq 0) {
+$ErrorActionPreference = "Continue"
+$originUrl = git remote get-url origin 2>$null
+$hasOrigin = ($LASTEXITCODE -eq 0 -and $originUrl)
+$ErrorActionPreference = "Stop"
+if ($hasOrigin) {
   git remote set-url origin $url
+  Write-Host "  已更新 origin"
 } else {
   git remote add origin $url
+  Write-Host "  已新增 origin"
 }
 Write-Host "  origin -> $url"
 
