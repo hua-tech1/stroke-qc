@@ -133,7 +133,10 @@ if ($LASTEXITCODE -ne 0) {
 "@
 }
 
-git @proxyArgs push origin --tags 2>$null | Out-Null
+$ErrorActionPreference = "Continue"
+& git @proxyArgs push origin --tags *> $null
+Write-Host "  标签已同步（如无新标签会提示 Everything up-to-date）"
+$ErrorActionPreference = "Stop"
 
 Write-Host @"
 
