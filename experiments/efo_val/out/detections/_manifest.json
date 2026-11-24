@@ -1,0 +1,82 @@
+{
+  "sequences": [
+    {
+      "seq": "2",
+      "frames": 150,
+      "gt_hit_frames": 150
+    },
+    {
+      "seq": "2_ST0_SE16",
+      "frames": 114,
+      "gt_hit_frames": 114
+    },
+    {
+      "seq": "3",
+      "frames": 150,
+      "gt_hit_frames": 150
+    },
+    {
+      "seq": "3_ST0_SE13",
+      "frames": 5,
+      "gt_hit_frames": 5
+    },
+    {
+      "seq": "3_ST0_SE16",
+      "frames": 28,
+      "gt_hit_frames": 28
+    },
+    {
+      "seq": "3_ST0_SE29",
+      "frames": 146,
+      "gt_hit_frames": 146
+    },
+    {
+      "seq": "4_ST0_SE10",
+      "frames": 168,
+      "gt_hit_frames": 168
+    },
+    {
+      "seq": "4_ST0_SE11",
+      "frames": 71,
+      "gt_hit_frames": 71
+    },
+    {
+      "seq": "4_ST0_SE20",
+      "frames": 46,
+      "gt_hit_frames": 46
+    },
+    {
+      "seq": "4_ST0_SE21",
+      "frames": 44,
+      "gt_hit_frames": 44
+    },
+    {
+      "seq": "4_ST0_SE23",
+      "frames": 40,
+      "gt_hit_frames": 40
+    },
+    {
+      "seq": "4_ST0_SE26",
+      "frames": 27,
+      "gt_hit_frames": 27
+    },
+    {
+      "seq": "4_ST0_SE7",
+      "frames": 81,
+      "gt_hit_frames": 81
+    },
+    {
+      "seq": "6_ST0_SE6",
+      "frames": 18,
+      "gt_hit_frames": 18
+    },
+    {
+      "seq": "9",
+      "frames": 439,
+      "gt_hit_frames": 439
+    }
+  ],
+  "total_frames": 1527,
+  "fps": 15.0,
+  "export_conf": 0.01
+}

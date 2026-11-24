@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>术中监控 · 卒中绿色通道质控台</title>
+<style>
+  :root{
+    --hdr:#1A5FB4; --line:#D9DEE6; --bg:#F0F2F5; --panel:#fff;
+    --ink:#1F2937; --muted:#6B7280; --ok:#0F6E56; --warn:#854F0B; --danger:#A32D2D;
+    --box:#00B87A;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font:12px/1.5 "Microsoft YaHei","PingFang SC",sans-serif;color:var(--ink);background:var(--bg)}
+  header{height:48px;background:var(--hdr);color:#fff;display:flex;align-items:center;padding:0 14px;gap:14px}
+  header .title{font-size:14px;font-weight:600}
+  header .ctx{font-size:12px;opacity:.85}
+  header .right{margin-left:auto;display:flex;align-items:center;gap:10px;font-size:12px}
+  .tag{padding:1px 6px;border:1px solid rgba(255,255,255,.45);border-radius:2px;font-size:11px}
+  .wrap{display:grid;grid-template-columns:1fr 340px;gap:8px;padding:8px;height:calc(100vh - 48px - 24px)}
+  .panel{background:var(--panel);border:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
+  .panel h3{margin:0;padding:6px 10px;font-size:12px;font-weight:600;border-bottom:1px solid var(--line);background:#FAFBFC}
+  .stage{flex:1;display:flex;align-items:center;justify-content:center;background:#111;position:relative;min-height:0;overflow:hidden}
+  .stage .frame{position:relative;display:inline-block;line-height:0;max-width:100%;max-height:100%}
+  .stage img{display:block;max-width:100%;max-height:100%}
+  .stage svg{position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none}
+  .badge{position:absolute;left:8px;top:8px;background:rgba(0,0,0,.6);color:#fff;font-size:11px;padding:2px 6px;border-radius:2px}
+  .side{display:flex;flex-direction:column;gap:8px;min-height:0}
+  .events{flex:1;overflow:auto}
+  .ev{display:flex;gap:8px;padding:6px 10px;border-bottom:1px solid #EEF1F5}
+  .ev .t{font-family:Consolas,monospace;color:var(--muted);min-width:70px}
+  .ev .n{flex:1}
+  .ev.in .n{color:var(--ok)}
+  .ev.out .n{color:var(--muted)}
+  .meter{padding:8px 10px;border-top:1px solid var(--line);background:#FAFBFC}
+  .meter .big{font:600 18px/1.2 Consolas,monospace}
+  .meter .sub{color:var(--muted);font-size:11px}
+  .alert{margin:0 8px 8px;padding:8px 10px;border-left:3px solid var(--danger);background:#FCEBEB;color:#7A1F1F;display:none}
+  .alert.show{display:block}
+  footer{height:24px;background:#fff;border-top:1px solid var(--line);display:flex;align-items:center;gap:14px;padding:0 10px;font-size:11px;color:var(--muted)}
+  .bar{display:flex;align-items:center;gap:6px;padding:6px 10px;border-top:1px solid var(--line);background:#FAFBFC}
+  button{font:12px "Microsoft YaHei";padding:3px 10px;border:1px solid #C7CFDA;background:#fff;border-radius:2px;cursor:pointer}
+  button:hover{background:#F3F6FA}
+  button.primary{background:var(--hdr);color:#fff;border-color:var(--hdr)}
+  button:disabled{opacity:.45;cursor:default}
+  select{font:12px "Microsoft YaHei";padding:2px 4px;border:1px solid #C7CFDA;border-radius:2px;background:#fff}
+  .seg{display:flex;gap:4px}
+  .seg button.on{background:var(--hdr);color:#fff;border-color:var(--hdr)}
+  .dd{position:relative}
+  .ddbtn{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.45);
+    padding:2px 8px;border-radius:2px;font:12px "Microsoft YaHei";cursor:pointer;white-space:nowrap}
+  .ddbtn:hover{background:rgba(255,255,255,.12)}
+  .ddbtn .caret{margin-left:6px;opacity:.8}
+  .ddlist{position:absolute;right:0;top:26px;min-width:210px;background:#fff;color:var(--ink);
+    border:1px solid #C7CFDA;box-shadow:0 4px 12px rgba(0,0,0,.14);display:none;z-index:60;border-radius:2px}
+  .ddlist.on{display:block}
+  .ddlist button{display:block;width:100%;text-align:left;border:none;border-bottom:1px solid #EEF1F5;
+    background:#fff;padding:7px 10px;font:12px "Microsoft YaHei";cursor:pointer;border-radius:0}
+  .ddlist button:last-child{border-bottom:none}
+  .ddlist button:hover{background:#EEF5FD}
+  .ddlist button.on{background:#E6F1FB;color:#1A4E7C;font-weight:600}
+  .ddlist .h{color:#6B7280;font-size:11px;margin-left:4px;font-weight:400}
+  .chk{display:flex;align-items:center;gap:4px;color:#4B5563;font-size:11px;user-select:none;cursor:pointer}
+  .chk input{cursor:pointer}
+  .progress{flex:1;height:4px;background:#E3E8EF;border-radius:2px;position:relative;overflow:hidden}
+  .progress i{position:absolute;left:0;top:0;bottom:0;width:0;background:var(--hdr)}
+  .dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--ok);margin-right:4px}
+  .dot.bad{background:var(--danger)}
+  .strip{height:22px;background:#111;display:flex;align-items:stretch;padding:3px 0;cursor:crosshair;overflow:hidden}
+  .strip i{flex:1 1 1px;margin:0 .5px;border-radius:1px;min-width:1px}
+  .strip i.hit{background:var(--box)}
+  .strip i.miss{background:#2A2E33}
+  .strip i.ev{background:var(--danger)}
+  .strip i.cur{outline:1px solid #fff;outline-offset:-1px}
+  .striptip{height:16px;line-height:16px;padding:0 10px;font-size:10px;color:#9CA3AF;background:#111;font-family:Consolas,monospace}
+</style>
+</head>
+<body>
+<header>
+  <span class="title">术中监控</span>
+  <span class="ctx" id="ctx">病例 001 · 器械进出</span>
+  <span class="tag" id="srcTag">数据源：离线序列</span>
+  <span class="tag">演示数据</span>
+  <div class="right">
+    <a href="/" style="color:#fff;text-decoration:none;border:1px solid rgba(255,255,255,.45);padding:2px 8px;border-radius:2px">首页</a>
+    <div class="dd" id="caseDD">
+      <button class="ddbtn" id="caseBtn" type="button">病例 —<span class="caret">▾</span></button>
+      <div class="ddlist" id="caseList"></div>
+    </div>
+    <a href="/cases" style="color:#fff;text-decoration:none;border:1px solid rgba(255,255,255,.45);padding:2px 8px;border-radius:2px">病例列表</a>
+    <a href="/qc" style="color:#fff;text-decoration:none;border:1px solid rgba(255,255,255,.45);padding:2px 8px;border-radius:2px">质控报表</a>
+    <a href="/about" style="color:#fff;text-decoration:none;border:1px solid rgba(255,255,255,.45);padding:2px 8px;border-radius:2px">数据说明</a>
+    <span id="conn"><span class="dot"></span>连接正常</span>
+  </div>
+</header>
+
+<div class="wrap">
+  <section class="panel">
+    <h3>DSA 影像 · 器械检测叠加 <em id="smoothNote" style="font-style:normal;font-weight:400;color:#6B7280">框为指数平滑（α=0.35）</em></h3>
+    <div class="stage" id="stage">
+      <div class="frame" id="frameBox">
+        <img id="img" alt="frame">
+        <svg id="ov" viewBox="0 0 512 512" preserveAspectRatio="none"></svg>
+        <div class="badge" id="badge">帧 0 / 0</div>
+      </div>
+    </div>
+    <div class="strip" id="strip"></div>
+    <div class="striptip" id="stripTip">悬停帧条查看连续确认过程</div>
+    <div class="alert" id="alert"></div>
+    <div class="bar">
+      <button class="primary" id="play">播放</button>
+      <button id="prev">‹ 逐帧</button>
+      <button id="next">逐帧 ›</button>
+      <div class="seg" id="speed">
+        <button data-v="0.25">0.25x</button>
+        <button data-v="0.5" class="on">0.5x</button>
+        <button data-v="1">1x</button>
+      </div>
+      <button id="adv" title="手术仍在进行，推进虚拟时钟">推进 5s</button>
+      <label class="chk" title="指数平滑，仅影响画框；事件时间戳始终用原始检测">
+        <input type="checkbox" id="smoothChk" checked> 平滑</label>
+      <div class="progress"><i id="prog"></i></div>
+      <span id="frameNo" style="min-width:90px;text-align:right;color:#6B7280">0 / 0</span>
+    </div>
+  </section>
+
+  <aside class="side">
+    <section class="panel" style="flex:1;min-height:0">
+      <h3>事件流（状态机实时生成）</h3>
+      <div class="events" id="events">
+        <div class="ev"><span class="t">—</span><span class="n" style="color:#9CA3AF">尚未开始播放</span></div>
+      </div>
+      <div class="meter">
+        <div class="big" id="elapsed">—</div>
+        <div class="sub" id="elapsedSub">当前无器械在场</div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h3>事件级自检（EFO）</h3>
+      <div style="padding:8px 10px;display:flex;flex-direction:column;gap:6px">
+        <div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--ink)">
+          <span>结构性盲区</span><b id="eaBlind" style="font-family:Consolas,monospace">—</b>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--ink)">
+          <span>检出上界（p=0.95）</span><b id="eaBound" style="font-family:Consolas,monospace">—</b>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--ink)">
+          <span>滞留偏置（中心口径）</span><b id="eaBias" style="font-family:Consolas,monospace">—</b>
+        </div>
+        <div style="color:var(--muted);font-size:10px;line-height:1.4">与模型精度无关，由「连续 k 帧确认」规则本身决定。</div>
+      </div>
+    </section>
+    <script>
+      (async () => {
+        try {
+          const r = await fetch('/api/demo/event-audit');
+          if (!r.ok) return;
+          const d = await r.json();
+          document.getElementById('eaBlind').textContent = d.blind_zone_ms + ' ms';
+          document.getElementById('eaBound').textContent = d.detection_upper_bound;
+          document.getElementById('eaBias').textContent = '+' + d.dwell_bias_center_ms + ' ms';
+        } catch (e) {}
+      })();
+    </script>
+
+    <section class="panel">
+      <h3>量化感知重标定（合成示例）</h3>
+      <div style="padding:8px 10px;display:flex;flex-direction:column;gap:5px;font-size:11px">
+        <div id="qdFrame" style="color:var(--muted)">—</div>
+        <div id="qdEvent" style="color:var(--danger);font-weight:600">—</div>
+        <div id="qdRecover" style="color:var(--ok);font-weight:600">—</div>
+        <div style="color:var(--muted);font-size:10px;line-height:1.4">机制演示：模拟置信度漂移，非真实 INT8 量化。</div>
+      </div>
+    </section>
+    <script>
+      (async () => {
+        try {
+          const r = await fetch('/api/demo/quant-demo');
+          if (!r.ok) return;
+          const d = await r.json();
+          document.getElementById('qdFrame').textContent = d.frame_effect;
+          document.getElementById('qdEvent').textContent = d.event_effect;
+          document.getElementById('qdRecover').textContent = d.recalibrated;
+        } catch (e) {}
+      })();
+    </script>
+
+    <section class="panel">
+      <h3>帧时序抖动（EFO 硬件扩展）</h3>
+      <div style="padding:8px 10px;display:flex;flex-direction:column;gap:6px;font-size:11px">
+        <input type="range" id="jitSigma" min="0" max="40" value="20" step="2" style="width:100%">
+        <div>抖动 σ = <b id="jitSigmaVal" style="font-family:Consolas">20</b> ms</div>
+        <div style="display:flex;justify-content:space-between"><span>盲区 P99</span><b id="jitBlind" style="font-family:Consolas;color:var(--danger)">—</b></div>
+        <div style="display:flex;justify-content:space-between"><span>滞留误差 P99</span><b id="jitDwell" style="font-family:Consolas;color:var(--danger)">—</b></div>
+        <div style="color:var(--muted);font-size:10px;line-height:1.4">合成仿真 δ~N(0,σ²)：帧到达抖动把确定性盲区变成随机盲区。</div>
+      </div>
+    </section>
+    <script>
+      (async () => {
+        async function up(){
+          const s = +document.getElementById('jitSigma').value;
+          document.getElementById('jitSigmaVal').textContent = s;
+          try {
+            const r = await fetch('/api/demo/jitter-demo?sigma=' + s);
+            if(!r.ok) return;
+            const d = await r.json();
+            document.getElementById('jitBlind').textContent = d.blind_zone_p99_ms + ' ms';
+            document.getElementById('jitDwell').textContent = d.dwell_error_p99_ms + ' ms';
+          } catch(e){}
+        }
+        document.getElementById('jitSigma').addEventListener('input', up);
+        up();
+      })();
+    </script>
+
+    <section class="panel">
+      <h3>帧乱序 + 保序（EFO 硬件扩展）</h3>
+      <div style="padding:8px 10px;display:flex;flex-direction:column;gap:6px;font-size:11px">
+        <input type="range" id="rdRate" min="0" max="0.5" value="0.1" step="0.01" style="width:100%">
+        <div>乱序率 p = <b id="rdRateVal" style="font-family:Consolas">10</b>%</div>
+        <div style="display:flex;justify-content:space-between"><span>检出率（无保序）</span><b id="rdNo" style="font-family:Consolas;color:var(--danger)">—</b></div>
+        <div style="display:flex;justify-content:space-between"><span>检出率（有保序）</span><b id="rdBuf" style="font-family:Consolas;color:var(--ok)">—</b></div>
+        <div style="color:var(--muted);font-size:10px;line-height:1.4">合成仿真（相邻交换）：临界长度事件对乱序极敏感，重排即恢复。</div>
+      </div>
+    </section>
+    <script>
+      (async () => {
+        async function up(){
+          const p = +document.getElementById('rdRate').value;
+          document.getElementById('rdRateVal').textContent = Math.round(p*100);
+          try {
+            const r = await fetch('/api/demo/reorder-demo?p=' + p);
+            if(!r.ok) return;
+            const d = await r.json();
+            document.getElementById('rdNo').textContent = d.no_buffer_detection;
+            document.getElementById('rdBuf').textContent = d.with_buffer_detection;
+          } catch(e){}
+        }
+        document.getElementById('rdRate').addEventListener('input', up);
+        up();
+      })();
+    </script>
+  </aside>
+</div>
+
+<footer>
+  <span>判定参数：conf 0.5 · 连续 3 帧入画 · 连续 5 帧离画 · 15fps</span>
+  <span id="paramNote"></span>
+  <span style="margin-left:auto" id="foot">合成时间戳（帧号推算），非真实临床时间</span>
+</footer>
+
+<script>
+const $ = s => document.querySelector(s);
+const state = {
+  code: 'A', frames: [], events: [], idx: 0, playing: false,
+  speed: 0.5, timer: null, firedSet: new Set(), timeoutShown: false,
+  clockMs: 0, vTimer: null,
+  smooth: true, ema: null, skipEma: true   // 仅影响画框，不影响事件
+};
+
+async function jget(u){ const r = await fetch(u); if(!r.ok) throw new Error(u + ' ' + r.status); return r.json(); }
+
+function fmt(ms){
+  const s = Math.floor(ms/1000), m = Math.floor(s/60);
+  return String(m).padStart(2,'0') + ':' + String(s%60).padStart(2,'0') + '.' + String(Math.round(ms%1000)).padStart(3,'0');
+}
+
+// 指数平滑（α=0.35）：抑制逐帧抖动。
+// 实测该序列单帧中心位移最大 70px、宽度在 20~160px 之间跳，不平滑时看起来像框在飘。
+// α=0.35 → 抖动降约 40%，滞后约 22px（4% 画幅），框仍稳稳压在导丝上。
+const EMA_A = 0.35;
+function emaBox(prev, cur){
+  const a = EMA_A;
+  return {
+    x1: a*cur.x1 + (1-a)*prev.x1,
+    y1: a*cur.y1 + (1-a)*prev.y1,
+    x2: a*cur.x2 + (1-a)*prev.x2,
+    y2: a*cur.y2 + (1-a)*prev.y2,
+    conf: cur.conf
+  };
+}
+
+// 叠加层与图片同尺寸：SVG 的定位父级是 .frame，而 .frame 由 img 撑开，
+// 所以 width/height:100% 就等于图片盒子，只需把 viewBox 对齐到图片原始像素。
+function fitOverlay(){
+  const img = $('#img'), svg = $('#ov');
+  if(!img.naturalWidth) return;
+  svg.setAttribute('viewBox', `0 0 ${img.naturalWidth} ${img.naturalHeight}`);
+}
+
+function drawBoxes(boxes){
+  const svg = $('#ov');
+  svg.innerHTML = boxes.map(b => {
+    const w = b.x2-b.x1, h = b.y2-b.y1;
+    const strong = b.conf >= 0.8;
+    return `<rect x="${b.x1}" y="${b.y1}" width="${w}" height="${h}"
+      fill="none" stroke="var(--box)" stroke-width="${strong?2:1.2}"
+      stroke-opacity="${strong?1:.65}"/>`
+      + `<text x="${b.x1}" y="${Math.max(10,b.y1-4)}" fill="var(--box)" font-size="11"
+         font-family="Consolas,monospace">${b.conf.toFixed(2)}</text>`;
+  }).join('');
+}
+
+function render(){
+  const f = state.frames[state.idx];
+  if(!f) return;
+  const meta = state.meta;
+  const img = $('#img');
+  if(img.src.indexOf('/frame/' + f.frame) < 0) img.src = `/api/demo/${state.code}/frame/${f.frame}`;
+
+  // 平滑只作用在"画出来的框"上；事件时间戳始终用原始检测，两者不混
+  const raw = f.boxes || [];
+  let show = raw;
+  if(state.smooth){
+    if(!raw.length){
+      state.ema = null;
+      show = [];
+    }else{
+      // 跳帧/换片时不做平滑，避免把上一处的框"拖"过来
+      state.ema = (state.ema && !state.skipEma)
+        ? emaBox(state.ema, raw[0])
+        : Object.assign({}, raw[0]);
+      state.skipEma = false;
+      show = [state.ema];
+    }
+  }
+
+  svgReset();
+  fitOverlay();
+  drawBoxes(show);
+  $('#badge').textContent = `帧 ${f.frame} / ${meta.total_frames-1}`;
+  $('#frameNo').textContent = `${f.frame} / ${meta.total_frames-1}`;
+  $('#prog').style.width = (100*(state.idx+1)/state.frames.length) + '%';
+  markCur();
+
+  addEventsUpTo(f.ts_ms);
+  updateElapsed(f.ts_ms);
+}
+
+function svgReset(){ $('#ov').innerHTML=''; }
+
+// ---- 状态机帧条：把「连续 k 帧确认」可视化 ----
+function hitAt(i){
+  const conf = (state.cfg && state.cfg.conf) || 0.5;
+  return (state.frames[i].boxes || []).some(b => b.conf >= conf);
+}
+function buildStrip(){
+  const strip = $('#strip'); if(!strip) return;
+  const evMap = {}; state.events.forEach(e => evMap[e.frame] = e);
+  strip.innerHTML = '';
+  state.frames.forEach((f, i) => {
+    const t = document.createElement('i');
+    t.className = evMap[f.frame] ? 'ev' : (hitAt(i) ? 'hit' : 'miss');
+    t.dataset.i = i;
+    strip.appendChild(t);
+  });
+}
+function showTip(i){
+  const evMap = {}; state.events.forEach(e => evMap[e.frame] = e);
+  const hit = hitAt(i);
+  let run = 0, j = i;
+  while(j >= 0 && hitAt(j) === hit){ run++; j--; }
+  const f = state.frames[i];
+  let msg = `帧 ${f.frame} · ${hit ? '命中' : '未命中'} · 已连续 ${run} 帧`;
+  if(evMap[f.frame]) msg += ` · 事件触发：${evMap[f.frame].rule}`;
+  $('#stripTip').textContent = msg;
+}
+function markCur(){
+  const ticks = $('#strip').children;
+  if(!ticks.length) return;
+  const cur = $('#strip i.cur'); if(cur) cur.classList.remove('cur');
+  if(ticks[state.idx]) ticks[state.idx].classList.add('cur');
+}
+$('#strip').addEventListener('mousemove', e => {
+  const t = e.target.closest('i'); if(!t) return;
+  showTip(+t.dataset.i);
+});
+$('#strip').addEventListener('mouseleave', () => {
+  $('#stripTip').textContent = '悬停帧条查看连续确认过程';
+});
+
+$('#img').addEventListener('load', fitOverlay);
+window.addEventListener('resize', fitOverlay);
+
+function addEventsUpTo(ts){
+  state.events.forEach((e,i) => {
+    if(e.ts_ms <= ts && !state.firedSet.has(i)){
+      state.firedSet.add(i);
+      appendEvent(e);
+      pauseAt(e);
+    }
+  });
+}
+
+function appendEvent(e){
+  const box = $('#events');
+  if(box.dataset.empty !== '0'){ box.innerHTML=''; box.dataset.empty='0'; }
+  const isIn = e.code === 'device_visible_start';
+  const row = document.createElement('div');
+  row.className = 'ev ' + (isIn ? 'in' : 'out');
+  row.innerHTML = `<span class="t">${fmt(e.ts_ms)}</span>
+    <span class="n">${isIn ? '器械入画' : '器械离画'}</span>
+    <span style="color:#9CA3AF;font-size:11px">帧 ${e.frame}</span>`;
+  box.appendChild(row);
+  box.scrollTop = box.scrollHeight;
+}
+
+function pauseAt(e){
+  if(!state.playing) return;
+  stop();
+  setTimeout(()=>{ if(state.idx < state.frames.length-1) play(); }, 1500);
+}
+
+function updateElapsed(ts){
+  ts = Math.max(ts, state.clockMs);
+  const ins = state.events.filter(e=>e.code==='device_visible_start');
+  const outs = state.events.filter(e=>e.code==='device_visible_end');
+  if(!ins.length || ts < ins[0].ts_ms){
+    $('#elapsed').textContent='—';
+    $('#elapsedSub').textContent='当前无器械在场';
+    return;
+  }
+  const inTs = ins[0].ts_ms;
+  const outTs = outs.length ? outs[0].ts_ms : null;
+  if(outTs && ts >= outTs){
+    $('#elapsed').textContent = ((outTs-inTs)/1000).toFixed(1)+' s';
+    $('#elapsedSub').textContent = '已闭合 · 器械已离画';
+    return;
+  }
+  const el = ts - inTs;
+  $('#elapsed').textContent = (el/1000).toFixed(1)+' s';
+  if(el > state.timeoutMs){
+    if(!state.timeoutShown){
+      state.timeoutShown = true;
+      showTimeout(el);
+    }
+    $('#elapsedSub').textContent = `⚠ 超过阈值 ${state.timeoutMs/1000}s`;
+  } else {
+    $('#elapsedSub').textContent = `滞留中 · 剩余 ${((state.timeoutMs-el)/1000).toFixed(0)} s`;
+  }
+}
+
+function showTimeout(el){
+  const a = $('#alert');
+  a.className='alert show';
+  a.innerHTML = `<b>⚠ 术中滞留超时</b>　滞留 ${(el/1000).toFixed(0)}s，超过阈值 ${state.timeoutMs/1000}s。
+    <span style="color:#6B7280">（示例：此处应自动生成随访任务）</span>`;
+}
+
+function startVirtualClock(){
+  if(state.vTimer) return;
+  state.clockMs = state.frames[state.frames.length-1].ts_ms;
+  state.vTimer = setInterval(()=>{
+    state.clockMs += 500;
+    updateElapsed(state.clockMs);
+    if(state.timeoutShown && state.clockMs > state.frames[state.frames.length-1].ts_ms + 20000){
+      clearInterval(state.vTimer); state.vTimer = null;
+    }
+  }, 100);
+}
+function stopVirtualClock(){
+  if(state.vTimer){ clearInterval(state.vTimer); state.vTimer = null; }
+}
+
+function play(){
+  if(state.playing) return;
+  state.playing = true;
+  $('#play').textContent = '暂停';
+  const step = () => {
+    if(!state.playing) return;
+    if(state.idx >= state.frames.length-1){
+      stop();
+      const open = state.events.some(e=>e.code==='device_visible_start')
+                && !state.events.some(e=>e.code==='device_visible_end');
+      if(open) startVirtualClock();
+      return;
+    }
+    state.idx++; render();
+    state.timer = setTimeout(step, state.frameMs / state.speed);
+  };
+  state.timer = setTimeout(step, state.frameMs / state.speed);
+}
+function stop(){
+  state.playing=false; clearTimeout(state.timer); $('#play').textContent='播放';
+}
+function reset(caseCode){
+  stop(); stopVirtualClock(); state.clockMs = 0; state.ema = null; state.skipEma = true;
+  state.code = caseCode; state.idx = 0; state.firedSet = new Set();
+  state.timeoutShown = false;
+  $('#events').innerHTML = '<div class="ev"><span class="t">—</span><span class="n" style="color:#9CA3AF">尚未开始播放</span></div>';
+  $('#events').dataset.empty='1';
+  $('#alert').className='alert';
+  $('#elapsed').textContent='—'; $('#elapsedSub').textContent='当前无器械在场';
+}
+
+async function loadCase(code){
+  const [fr, ev, cs] = await Promise.all([
+    jget(`/api/demo/${code}/frames`), jget(`/api/demo/${code}/events`), jget('/api/demo')
+  ]);
+  state.frames = fr.frames; state.events = ev.events;
+  state.frameMs = fr.frame_ms; state.meta = fr;
+  buildStrip();
+  // 检测事件落库（幂等）：打开演示即把事件写入 milestones，断链补齐
+  fetch(`/api/demo/${code}/events/persist`, { method: 'POST' }).catch(() => {});
+  // 阈值跟后端配置走，不在页面里写死（否则改 config 页面不同步）
+  state.timeoutMs = (state.cfg && state.cfg.timeout_ms) || 30000;
+  const c = cs.sequences.find(x=>x.code===code);
+  state.code = code;                 // 供下拉高亮与标签使用
+  $('#ctx').textContent = c ? `${c.label}　·　${c.seq}` : code;
+  renderCaseDD();                    // 标签与当前病例强制同步
+  $('#srcTag').textContent = '数据源：' + (c ? c.data_source : '离线序列');
+  $('#paramNote').textContent = `事件 ${ev.event_count} 个 · ${ev.open ? '未闭合' : '已闭合'}`;
+  state.ema = null; state.skipEma = true;
+  reset(code);
+  render();
+}
+
+$('#play').onclick = () => state.playing ? stop() : play();
+$('#prev').onclick = () => { stop(); state.skipEma = true; state.idx = Math.max(0, state.idx-1); render(); };
+$('#next').onclick = () => { stop(); state.skipEma = true; state.idx = Math.min(state.frames.length-1, state.idx+1); render(); };
+$('#speed').onclick = e => {
+  const b = e.target.closest('button'); if(!b) return;
+  [...$('#speed').children].forEach(x=>x.classList.remove('on'));
+  b.classList.add('on'); state.speed = parseFloat(b.dataset.v);
+};
+$('#adv').onclick = () => {
+  if(!state.clockMs) state.clockMs = state.frames[state.idx].ts_ms;
+  state.clockMs += 5000;
+  updateElapsed(state.clockMs);
+};
+$('#smoothChk').onchange = e => {
+  state.smooth = e.target.checked;
+  state.ema = null; state.skipEma = true;
+  $('#smoothNote').textContent = state.smooth ? '框为指数平滑（α=0.35）' : '框为原始检测输出';
+  render();
+};
+let CASES = [];
+function renderCaseDD(){
+  $('#caseBtn').innerHTML = `${(CASES.find(c=>c.code===state.code)||{}).label || '病例'} <span class="caret">▾</span>`;
+  $('#caseList').innerHTML = CASES.map(c => `
+    <button data-code="${c.code}" class="${c.code===state.code?'on':''}">
+      ${c.label}<span class="h">${c.seq}</span></button>`).join('');
+  $('#caseList').querySelectorAll('button').forEach(b => {
+    b.onclick = () => {
+      closeCaseDD();
+      if(b.dataset.code !== state.code) loadCase(b.dataset.code);
+    };
+  });
+}
+function openCaseDD(){ $('#caseList').classList.add('on'); }
+function closeCaseDD(){ $('#caseList').classList.remove('on'); }
+$('#caseBtn').onclick = e => {
+  e.stopPropagation();
+  $('#caseList').classList.contains('on') ? closeCaseDD() : openCaseDD();
+};
+document.addEventListener('click', e => {
+  if(!$('#caseDD').contains(e.target)) closeCaseDD();
+});
+document.addEventListener('keydown', e => { if(e.key === 'Escape') closeCaseDD(); });
+
+(async function init(){
+  try{
+    // 参数以 /health 为准，页面不再各写一份
+    try{ state.cfg = (await jget('/health')).params || {}; }catch(e){}
+    const cs = await jget('/api/demo');
+    CASES = cs.sequences;
+    // 支持 ?case=B&frame=80 深链，便于复查某一帧（也方便答辩时直接跳到关键帧）
+    const q = new URLSearchParams(location.search);
+    const code = (q.get('case') || 'A').toUpperCase();
+    await loadCase(cs.sequences.some(x=>x.code===code) ? code : 'A');
+    // ?t=35000 → 把虚拟时钟直接推到该毫秒，便于演示/截取"超时预警"那一刻
+    const tms = parseInt(q.get('t'), 10);
+    if(Number.isFinite(tms) && tms > 0){
+      state.clockMs = tms;
+      updateElapsed(tms);
+    }
+    const fr = parseInt(q.get('frame'), 10);
+    if(Number.isFinite(fr) && fr >= 0 && fr < state.frames.length){
+      state.skipEma = true;
+      state.idx = fr;
+      render();
+    }
+  }catch(err){
+    $('#conn').innerHTML = '<span class="dot bad"></span>接口异常';
+    console.error(err);
+  }
+})();
+</script>
+<script src="/static/nav.js"></script>
+</body>
+</html>

@@ -1,0 +1,7 @@
+{
+  "conv_tensors": 64,
+  "params": 3127216,
+  "max_abs_err": 0.05511856,
+  "per_channel": true,
+  "tensors_changed": 64
+}

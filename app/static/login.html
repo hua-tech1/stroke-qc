@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>登录 · 卒中绿色通道质控台</title>
+<style>
+  :root{--hdr:#1A5FB4;--line:#D9DEE6;--bg:#EEF1F5;--ink:#1F2937;--muted:#6B7280;--danger:#A32D2D;}
+  *{box-sizing:border-box}
+  body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;
+       font:13px/1.6 "Microsoft YaHei","PingFang SC",sans-serif;color:var(--ink);
+       background:linear-gradient(180deg,#F6F8FB 0%,#E9EEF5 100%)}
+  .card{width:380px;background:#fff;border:1px solid var(--line);padding:28px 30px 22px}
+  .brand{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+  .brand .mark{width:32px;height:32px;background:var(--hdr);color:#fff;display:flex;
+    align-items:center;justify-content:center;font-size:15px;font-weight:600;border-radius:2px}
+  .brand b{font-size:15px;font-weight:600;letter-spacing:.2px}
+  .sub{color:var(--muted);font-size:12px;margin:0 0 20px}
+  label{display:block;color:#374151;margin-bottom:4px;font-size:12px}
+  input{width:100%;font:13px "Microsoft YaHei";padding:8px 10px;border:1px solid #C7CFDA;
+    border-radius:2px;background:#fff;margin-bottom:14px;outline:none}
+  input:focus{border-color:var(--hdr);box-shadow:0 0 0 2px rgba(26,95,180,.12)}
+  button{width:100%;font:13px "Microsoft YaHei";padding:9px 0;background:var(--hdr);color:#fff;
+    border:1px solid var(--hdr);border-radius:2px;cursor:pointer}
+  button:hover{background:#15529E}
+  button:disabled{opacity:.6;cursor:default}
+  .err{display:none;background:#FCEBEB;color:var(--danger);border:1px solid #F0C0C0;
+    padding:6px 10px;font-size:12px;margin-bottom:12px}
+  .err.on{display:block}
+  .demo{margin-top:18px;border-top:1px solid var(--line);padding-top:10px}
+  .demo .hd{color:var(--muted);font-size:12px;cursor:pointer;user-select:none}
+  .demo .hd:hover{color:var(--hdr)}
+  .demo .body{display:none;margin-top:8px;font-size:12px;color:#4B5563}
+  .demo.open .body{display:block}
+  .demo table{width:100%;border-collapse:collapse;font-size:12px;margin-top:6px}
+  .demo td{padding:3px 6px;border:1px solid var(--line)}
+  .demo td.k{font-family:Consolas,monospace;color:var(--hdr);width:88px}
+  .demo .pw{margin-top:8px;color:#7A4A0B;background:#FFF9E8;border:1px solid #F0DCA0;padding:5px 8px}
+  footer{margin-top:16px;color:#9CA3AF;font-size:11px;display:flex;justify-content:space-between}
+  .env{background:#EEF5FD;color:#1A4E7C;border:1px solid #CFE0F5;padding:1px 6px;font-size:11px;border-radius:2px}
+</style>
+</head>
+<body>
+<form class="card" id="f" autocomplete="on">
+  <div class="brand">
+    <div class="mark">卒</div>
+    <b>卒中绿色通道 · 介入流程质控台</b>
+  </div>
+  <p class="sub">请使用院内账号登录</p>
+
+  <div class="err" id="err"></div>
+
+  <label for="u">账号</label>
+  <input id="u" name="username" autocomplete="username" placeholder="请输入账号" autofocus>
+  <label for="p">口令</label>
+  <input id="p" name="password" type="password" autocomplete="current-password" placeholder="请输入口令">
+  <button id="btn" type="submit">登 录</button>
+
+  <div class="demo" id="demo">
+    <div class="hd" id="demoHd">▸ 演示账号（点击展开）</div>
+    <div class="body">
+      <table>
+        <tr><td class="k">doctor</td><td>医生 · 术中监控 / 病例列表</td></tr>
+        <tr><td class="k">nurse</td><td>护士 · 随访工作台 / 病例列表</td></tr>
+        <tr><td class="k">qc</td><td>质控科 · 质控报表 / 整改台账</td></tr>
+        <tr><td class="k">guest</td><td>访客 · 全部只读，不可写入</td></tr>
+      </table>
+      <div class="pw">统一口令：<b>Demo@2026</b></div>
+      <div style="color:#6B7280;margin-top:6px">演示环境数据全部为仿真，不含真实患者信息。</div>
+    </div>
+  </div>
+
+  <footer>
+    <span>v0.9 · 本地部署</span>
+    <span class="env">演示环境</span>
+  </footer>
+</form>
+
+<script>
+const $ = s => document.querySelector(s);
+const NEXT = new URLSearchParams(location.search).get('next');
+
+$('#demoHd').onclick = () => {
+  $('#demo').classList.toggle('open');
+  const open = $('#demo').classList.contains('open');
+  $('#demoHd').textContent = (open ? '▾ ' : '▸ ') + '演示账号（点击' + (open ? '收起' : '展开') + '）';
+};
+
+function showErr(msg){
+  const e = $('#err');
+  e.textContent = msg;
+  e.classList.add('on');
+}
+
+$('#f').onsubmit = async (ev) => {
+  ev.preventDefault();
+  $('#err').classList.remove('on');
+  const username = $('#u').value.trim();
+  const password = $('#p').value;
+  if(!username || !password) return showErr('请输入账号与口令');
+
+  $('#btn').disabled = true;
+  $('#btn').textContent = '登录中…';
+  try{
+    const r = await fetch('/api/login', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({username, password})
+    });
+    const d = await r.json().catch(() => ({}));
+    if(!r.ok){
+      showErr(d.detail || `登录失败（${r.status}）`);
+      return;
+    }
+    // 只接受站内路径，避免被 next 参数带到外部站点
+    const target = (NEXT && NEXT.startsWith('/') && !NEXT.startsWith('//')) ? NEXT : d.home;
+    location.replace(target || '/');
+  }catch(e){
+    showErr('网络异常，请确认服务已启动');
+  }finally{
+    $('#btn').disabled = false;
+    $('#btn').textContent = '登 录';
+  }
+};
+</script>
+</body>
+</html>

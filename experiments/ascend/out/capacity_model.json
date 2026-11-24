@@ -1,0 +1,141 @@
+{
+  "project_params": {
+    "fps": 15.0,
+    "resolution": "1024x1024",
+    "channels": [
+      2,
+      3,
+      4
+    ]
+  },
+  "spec_source": "Atlas 200I A2 基本规格（华为官方文档）",
+  "decode": [
+    {
+      "board": "Atlas 200I A2 20TOPS 12GB",
+      "channels": 2,
+      "decode_capacity_1080p30": 40,
+      "demand_pxps": 31.5,
+      "capacity_pxps": 2488.3,
+      "decode_util_pct": 1.26,
+      "equiv_1080p30": 0.506
+    },
+    {
+      "board": "Atlas 200I A2 20TOPS 12GB",
+      "channels": 3,
+      "decode_capacity_1080p30": 40,
+      "demand_pxps": 47.2,
+      "capacity_pxps": 2488.3,
+      "decode_util_pct": 1.9,
+      "equiv_1080p30": 0.759
+    },
+    {
+      "board": "Atlas 200I A2 20TOPS 12GB",
+      "channels": 4,
+      "decode_capacity_1080p30": 40,
+      "demand_pxps": 62.9,
+      "capacity_pxps": 2488.3,
+      "decode_util_pct": 2.53,
+      "equiv_1080p30": 1.011
+    },
+    {
+      "board": "Atlas 200I A2 20TOPS 8GB",
+      "channels": 2,
+      "decode_capacity_1080p30": 40,
+      "demand_pxps": 31.5,
+      "capacity_pxps": 2488.3,
+      "decode_util_pct": 1.26,
+      "equiv_1080p30": 0.506
+    },
+    {
+      "board": "Atlas 200I A2 20TOPS 8GB",
+      "channels": 3,
+      "decode_capacity_1080p30": 40,
+      "demand_pxps": 47.2,
+      "capacity_pxps": 2488.3,
+      "decode_util_pct": 1.9,
+      "equiv_1080p30": 0.759
+    },
+    {
+      "board": "Atlas 200I A2 20TOPS 8GB",
+      "channels": 4,
+      "decode_capacity_1080p30": 40,
+      "demand_pxps": 62.9,
+      "capacity_pxps": 2488.3,
+      "decode_util_pct": 2.53,
+      "equiv_1080p30": 1.011
+    },
+    {
+      "board": "Atlas 200I A2 8TOPS 4GB",
+      "channels": 2,
+      "decode_capacity_1080p30": 20,
+      "demand_pxps": 31.5,
+      "capacity_pxps": 1244.2,
+      "decode_util_pct": 2.53,
+      "equiv_1080p30": 0.506
+    },
+    {
+      "board": "Atlas 200I A2 8TOPS 4GB",
+      "channels": 3,
+      "decode_capacity_1080p30": 20,
+      "demand_pxps": 47.2,
+      "capacity_pxps": 1244.2,
+      "decode_util_pct": 3.79,
+      "equiv_1080p30": 0.759
+    },
+    {
+      "board": "Atlas 200I A2 8TOPS 4GB",
+      "channels": 4,
+      "decode_capacity_1080p30": 20,
+      "demand_pxps": 62.9,
+      "capacity_pxps": 1244.2,
+      "decode_util_pct": 5.06,
+      "equiv_1080p30": 1.011
+    }
+  ],
+  "inference": [
+    {
+      "single_frame_ms": 7.0,
+      "frames_per_sec_capacity": 142.9,
+      "channels_supported_at_15fps": 9.5,
+      "note": "仅推理；未计入前后处理与调度开销"
+    },
+    {
+      "single_frame_ms": 12.0,
+      "frames_per_sec_capacity": 83.3,
+      "channels_supported_at_15fps": 5.6,
+      "note": "仅推理；未计入前后处理与调度开销"
+    }
+  ],
+  "memory": [
+    {
+      "channels": 2,
+      "frame_mb": 1.57,
+      "decode_buffer_mb": 12.6
+    },
+    {
+      "channels": 3,
+      "frame_mb": 1.57,
+      "decode_buffer_mb": 18.9
+    },
+    {
+      "channels": 4,
+      "frame_mb": 1.57,
+      "decode_buffer_mb": 25.2
+    }
+  ],
+  "bandwidth": [
+    {
+      "channels": 2,
+      "raw_in_mbps": 377.5
+    },
+    {
+      "channels": 3,
+      "raw_in_mbps": 566.2
+    },
+    {
+      "channels": 4,
+      "raw_in_mbps": 755.0
+    }
+  ],
+  "method": "规格推算，非上机实测"
+}
