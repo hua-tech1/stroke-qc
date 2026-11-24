@@ -1,0 +1,11 @@
+{
+  "sequences": 15,
+  "frames": 1527,
+  "mean_drift": 0.001314,
+  "p99_drift": 0.0191,
+  "max_drift": 0.0614,
+  "threshold": 0.5,
+  "frames_crossing": 0,
+  "event_identical_sequences": 15,
+  "method": "per-channel symmetric INT8 weights (fake-quant), activations FP32"
+}

@@ -261,12 +261,12 @@ def main() -> None:
             drops = sum(v["dropped"] for v in pc.values())
             p99 = max((v["lat_p99"] or 0) for v in pc.values())
             rows.append({"channels": n, "frames_per_channel": args.frames,
-                         "reorder_p": args.reorder_p,
+                         "reorder_p": args.reorder_p, "order_buffer": args.buffer,
                          "lat_p99_max": p99, "drops": drops,
                          "events_identical": f"{ok}/{n}", "detail": pc})
             print(f"N={n}  最差 p99={p99:7.1f}ms  掉帧={drops:3d}  "
                   f"事件与基准一致={ok}/{n}")
-        tag = "reorder" if args.reorder_p > 0 else "realtime"
+        tag = ("reorder_" if args.reorder_p > 0 else "realtime_") + args.buffer
         (OUT / f"{tag}.json").write_text(json.dumps(rows, ensure_ascii=False, indent=2),
                                          encoding="utf-8")
         print(f"\n输出：{OUT / f'{tag}.json'}")

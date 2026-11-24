@@ -3,7 +3,8 @@
     "channels": 4,
     "frames_per_channel": 90,
     "reorder_p": 0.3,
-    "lat_p99_max": 187.3,
+    "order_buffer": "on",
+    "lat_p99_max": 1871.3,
     "drops": 0,
     "events_identical": "4/4",
     "detail": {
@@ -12,9 +13,9 @@
         "events_ref": 1,
         "events_actual": 1,
         "events_identical": true,
-        "lat_p50": 85.7,
-        "lat_p95": 153.2,
-        "lat_p99": 175.0,
+        "lat_p50": 489.8,
+        "lat_p95": 1760.1,
+        "lat_p99": 1871.1,
         "dropped": 0
       },
       "1": {
@@ -22,9 +23,9 @@
         "events_ref": 1,
         "events_actual": 1,
         "events_identical": true,
-        "lat_p50": 86.0,
-        "lat_p95": 172.6,
-        "lat_p99": 187.0,
+        "lat_p50": 489.7,
+        "lat_p95": 1760.1,
+        "lat_p99": 1871.2,
         "dropped": 0
       },
       "2": {
@@ -32,9 +33,9 @@
         "events_ref": 1,
         "events_actual": 1,
         "events_identical": true,
-        "lat_p50": 82.8,
-        "lat_p95": 172.7,
-        "lat_p99": 187.3,
+        "lat_p50": 489.7,
+        "lat_p95": 1760.1,
+        "lat_p99": 1871.2,
         "dropped": 0
       },
       "3": {
@@ -42,9 +43,9 @@
         "events_ref": 1,
         "events_actual": 1,
         "events_identical": true,
-        "lat_p50": 82.4,
-        "lat_p95": 173.2,
-        "lat_p99": 186.8,
+        "lat_p50": 489.9,
+        "lat_p95": 1760.2,
+        "lat_p99": 1871.3,
         "dropped": 0
       }
     }

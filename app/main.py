@@ -173,10 +173,90 @@ def demo_events(code: str):
     meta = demo_meta(code)
     d = load_detection(meta["seq"])
     events = generate_events(d["frames"])
+    dw = dwell_ms(d["frames"], events)
+    bias = event_audit_mod.dwell_bias_center_ms(C.K_IN, C.M_OUT, C.FRAME_MS)
     return {"case": code, "seq": meta["seq"], "case_no": meta["case_no"],
             "events": [e.dict() for e in events], "event_count": len(events),
-            "open": is_open(events), "dwell_ms": dwell_ms(d["frames"], events),
+            "open": is_open(events), "dwell_ms": dw,
+            # 判据自带偏置：入画晚确认 (k-1)Δt、离画晚确认 m·Δt，两端不等长 → 测量值偏长
+            "dwell_bias_ms": round(bias, 1),
+            "dwell_corrected_ms": round(
+                event_audit_mod.corrected_dwell_ms(dw, C.K_IN, C.M_OUT, C.FRAME_MS), 1)
+            if dw is not None else None,
             "params": {"conf": C.CONF, "k_in": C.K_IN, "m_out": C.M_OUT}}
+
+
+# ============================================================
+# 验证证据汇总（只读 experiments 产出，不做计算、缺文件就返回 null）
+# ============================================================
+EXP_ROOT = C.ROOT / "experiments"
+
+
+def _read_json(rel: str):
+    try:
+        return json.loads((EXP_ROOT / rel).read_text(encoding="utf-8"))
+    except Exception:
+        return None
+
+
+@app.get("/api/verify/summary")
+def verify_summary():
+    """把 experiments/ 下的实测数字汇总给前端，供「验证」面板展示。
+
+    设计原则：**没有跑过的实验就返回 null，绝不补一个看起来合理的数**。
+    每个数字都带 sources，前端会把来源显示在数字旁边。
+    """
+    val = _read_json("efo_val/out/val_event_level.json") or {}
+    base = val.get("baseline") or {}
+    q = _read_json("int8/out/summary.json") or {}
+    cap = _read_json("ascend/out/capacity_model.json") or {}
+    mc = _read_json("ascend_multichannel/out/capacity.json") or []
+    rt = _read_json("ascend_multichannel/out/realtime_on.json") or []
+    ro_off = _read_json("ascend_multichannel/out/reorder_off.json") or []
+    ro_on = _read_json("ascend_multichannel/out/reorder_on.json") or []
+
+    d4 = next((r for r in (cap.get("decode") or [])
+               if r.get("channels") == 4 and str(r.get("board", "")).startswith("Atlas 200I A2 20TOPS 12GB")), None)
+    mc4 = next((r for r in mc if r.get("batch") == 4), None)
+    rt4 = next((r for r in rt if r.get("channels") == 4), None)
+    off4 = next((r for r in ro_off if r.get("channels") == 4), None)
+    on4 = next((r for r in ro_on if r.get("channels") == 4), None)
+
+    return {
+        "event_level": {
+            "frames": val.get("frames"), "sequences": val.get("sequences"),
+            "f1": base.get("event_f1"), "precision": base.get("event_precision"),
+            "recall": base.get("event_recall"),
+            "seq_correct": base.get("seq_correct"),
+            "confirm_lag_frames": base.get("confirm_lag_frames_median"),
+        },
+        "quantization": {
+            "frames": q.get("frames"), "sequences": q.get("sequences"),
+            "p99_drift": q.get("p99_drift"), "frames_crossing": q.get("frames_crossing"),
+            "event_identical_sequences": q.get("event_identical_sequences"),
+        },
+        "ascend_decode": {
+            "channels": 4,
+            "decode_util_pct": (d4 or {}).get("decode_util_pct"),
+            "capacity_1080p30": (d4 or {}).get("decode_capacity_1080p30"),
+        },
+        "multichannel": {
+            "batch4_ms_per_frame": (mc4 or {}).get("infer_ms_per_frame"),
+            "batch4_util_pct": (mc4 or {}).get("util_at_this_n"),
+            # 时延为单次运行，跨运行波动可达一个数量级，故只作记录、不作结论
+            "realtime4_p99_ms_single_run": (rt4 or {}).get("lat_p99_max"),
+            "realtime4_p99_note": "单次运行；两次实测 160–432 ms 波动，不作结论",
+            "reorder_off_identical": (off4 or {}).get("events_identical"),
+            "reorder_on_identical": (on4 or {}).get("events_identical"),
+            "reorder_p": (off4 or {}).get("reorder_p"),
+        },
+        "sources": {
+            "event_level": "experiments/efo_val/out/val_event_level.json",
+            "quantization": "experiments/int8/out/summary.json",
+            "ascend_decode": "experiments/ascend/out/capacity_model.json（规格推算）",
+            "multichannel": "experiments/ascend_multichannel/out/",
+        },
+    }
 
 
 @app.post("/api/demo/{code}/events/persist")

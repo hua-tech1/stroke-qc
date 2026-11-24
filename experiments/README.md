@@ -40,6 +40,7 @@ python experiments/efo_val/run_val_experiment.py
 python experiments/int8/weight_int8.py --weights runs/baseline/weights/best.pt --device 0
 python experiments/efo_val/run_val_experiment.py \
     --dir experiments/int8/out/detections_int8w --tag _int8w
+python experiments/int8/compare.py      # 产出 summary.json（前端「量化」面板读它）
 
 # 4) 昇腾容量模型（零依赖）
 python experiments/ascend/capacity_model.py

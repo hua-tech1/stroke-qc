@@ -27,8 +27,9 @@
 | INT8 权重量化（per-channel） | 逐帧 \|Δconf\| 均值 **0.0013** / p99 **0.0191** / 最大 0.0614；**跨阈值帧 0**；事件级指标**完全不变** | `experiments/int8/out/` | L2 |
 | 4 路 DSA 解码占用 | 一块 20TOPS 模块（40 路 1080P@30）的 **2.53%** | `experiments/ascend/out/capacity_model.md` | L1 |
 | 多路推理容量（本机） | batch 4 时单帧等效 **14.82 ms**，容量 **67.5 fps**，可支撑 **4.5 路@15fps**（4 路负载 88.9%） | `experiments/ascend_multichannel/out/capacity.json` | L2 |
-| 多路并发不破坏事件 | 4 路实时：p99 **159.9 ms**，丢帧 0，事件与基准 **4/4 一致** | `experiments/ascend_multichannel/out/realtime.json` | L2 |
-| **乱序破坏、保序恢复** | 乱序 p=0.3、4 路：无保序 **1/4** 正确；有保序 **4/4** 正确 | `experiments/ascend_multichannel/out/reorder.json` | L2 |
+| 多路并发不破坏事件 | 4 路实时：丢帧 0，事件与基准 **4/4 一致**（两次独立运行一致） | `experiments/ascend_multichannel/out/realtime_on.json` | L2 |
+| **乱序破坏、保序恢复** | 乱序 p=0.3、4 路：无保序 **1/4** 正确；有保序 **4/4** 正确（**两次独立运行完全一致**） | `experiments/ascend_multichannel/out/reorder_{off,on}.json` | L2 |
+| 时延（仅记录） | 4 路 p99 单次 160–432 ms，**波动一个数量级，不作结论** | 同上 | L1 |
 
 ## 三、由新证据引出的三处口径修正（必须改）
 

@@ -147,7 +147,9 @@
         <div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--ink)">
           <span>滞留偏置（中心口径）</span><b id="eaBias" style="font-family:Consolas,monospace">—</b>
         </div>
+        <div id="vfEvent" style="font-size:10px;line-height:1.4;color:var(--ink);border-top:1px dashed #E5E7EB;padding-top:5px">—</div>
         <div style="color:var(--muted);font-size:10px;line-height:1.4">与模型精度无关，由「连续 k 帧确认」规则本身决定。</div>
+        <div style="font-size:9px;line-height:1.3;color:#9CA3AF">解析 · 按当前配置现算（k=3 / m=5 / 15fps）</div>
       </div>
     </section>
     <script>
@@ -169,7 +171,9 @@
         <div id="qdFrame" style="color:var(--muted)">—</div>
         <div id="qdEvent" style="color:var(--danger);font-weight:600">—</div>
         <div id="qdRecover" style="color:var(--ok);font-weight:600">—</div>
+        <div id="qdReal" style="font-size:10px;line-height:1.4;color:var(--ink);border-top:1px dashed #E5E7EB;padding-top:5px">—</div>
         <div style="color:var(--muted);font-size:10px;line-height:1.4">机制演示：模拟置信度漂移，非真实 INT8 量化。</div>
+        <div style="font-size:9px;line-height:1.3;color:#9CA3AF">实测 · experiments/int8/out/summary.json</div>
       </div>
     </section>
     <script>
@@ -193,6 +197,7 @@
         <div style="display:flex;justify-content:space-between"><span>盲区 P99</span><b id="jitBlind" style="font-family:Consolas;color:var(--danger)">—</b></div>
         <div style="display:flex;justify-content:space-between"><span>滞留误差 P99</span><b id="jitDwell" style="font-family:Consolas;color:var(--danger)">—</b></div>
         <div style="color:var(--muted);font-size:10px;line-height:1.4">合成仿真 δ~N(0,σ²)：帧到达抖动把确定性盲区变成随机盲区。</div>
+        <div style="font-size:9px;line-height:1.3;color:#9CA3AF">仿真 · packages/efo/jitter.py（非 DVPP 实测）</div>
       </div>
     </section>
     <script>
@@ -220,7 +225,9 @@
         <div>乱序率 p = <b id="rdRateVal" style="font-family:Consolas">10</b>%</div>
         <div style="display:flex;justify-content:space-between"><span>检出率（无保序）</span><b id="rdNo" style="font-family:Consolas;color:var(--danger)">—</b></div>
         <div style="display:flex;justify-content:space-between"><span>检出率（有保序）</span><b id="rdBuf" style="font-family:Consolas;color:var(--ok)">—</b></div>
+        <div id="rdReal" style="font-size:10px;line-height:1.4;color:var(--ink);border-top:1px dashed #E5E7EB;padding-top:5px">—</div>
         <div style="color:var(--muted);font-size:10px;line-height:1.4">合成仿真（相邻交换）：临界长度事件对乱序极敏感，重排即恢复。</div>
+        <div style="font-size:9px;line-height:1.3;color:#9CA3AF">实测 · experiments/ascend_multichannel/out/</div>
       </div>
     </section>
     <script>
@@ -238,6 +245,26 @@
         }
         document.getElementById('rdRate').addEventListener('input', up);
         up();
+      })();
+    </script>
+
+    <script>
+      (async () => {
+        try {
+          const r = await fetch('/api/verify/summary');
+          if (!r.ok) return;
+          const v = await r.json();
+          const e = v.event_level || {}, q = v.quantization || {}, m = v.multichannel || {};
+          const set = (id, t) => { const el = document.getElementById(id); if (el && t) el.textContent = t; };
+          if (e.frames) set('vfEvent',
+            `${e.frames} 帧真实标注：事件级 F1 ${e.f1}（P ${e.precision} / R ${e.recall}）`
+            + `，${e.seq_correct}/${e.sequences} 序列完全正确，入画确认延迟 ${e.confirm_lag_frames} 帧`);
+          if (q.p99_drift != null) set('qdReal',
+            `真实权重量化（${q.frames} 帧）：p99 漂移 ${q.p99_drift}，跨阈值 ${q.frames_crossing} 帧`
+            + `，事件完全一致 ${q.event_identical_sequences}/${q.sequences}`);
+          if (m.reorder_off_identical) set('rdReal',
+            `4 路实测 · 乱序 p=${m.reorder_p}：无保序 ${m.reorder_off_identical} 正确，加保序后 ${m.reorder_on_identical}`);
+        } catch (err) {}
       })();
     </script>
   </aside>
@@ -509,7 +536,9 @@ async function loadCase(code){
   $('#ctx').textContent = c ? `${c.label}　·　${c.seq}` : code;
   renderCaseDD();                    // 标签与当前病例强制同步
   $('#srcTag').textContent = '数据源：' + (c ? c.data_source : '离线序列');
-  $('#paramNote').textContent = `事件 ${ev.event_count} 个 · ${ev.open ? '未闭合' : '已闭合'}`;
+  $('#paramNote').textContent = `事件 ${ev.event_count} 个 · ${ev.open ? '未闭合' : '已闭合'}`
+    + (ev.dwell_ms != null && ev.dwell_corrected_ms != null
+        ? `　·　滞留 ${ev.dwell_ms} ms → 校正后 ${ev.dwell_corrected_ms} ms（判据偏置 +${ev.dwell_bias_ms} ms）` : '');
   state.ema = null; state.skipEma = true;
   reset(code);
   render();
