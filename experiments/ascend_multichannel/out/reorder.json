@@ -1,0 +1,52 @@
+[
+  {
+    "channels": 4,
+    "frames_per_channel": 90,
+    "reorder_p": 0.3,
+    "lat_p99_max": 187.3,
+    "drops": 0,
+    "events_identical": "4/4",
+    "detail": {
+      "0": {
+        "frames": 90,
+        "events_ref": 1,
+        "events_actual": 1,
+        "events_identical": true,
+        "lat_p50": 85.7,
+        "lat_p95": 153.2,
+        "lat_p99": 175.0,
+        "dropped": 0
+      },
+      "1": {
+        "frames": 90,
+        "events_ref": 1,
+        "events_actual": 1,
+        "events_identical": true,
+        "lat_p50": 86.0,
+        "lat_p95": 172.6,
+        "lat_p99": 187.0,
+        "dropped": 0
+      },
+      "2": {
+        "frames": 90,
+        "events_ref": 1,
+        "events_actual": 1,
+        "events_identical": true,
+        "lat_p50": 82.8,
+        "lat_p95": 172.7,
+        "lat_p99": 187.3,
+        "dropped": 0
+      },
+      "3": {
+        "frames": 90,
+        "events_ref": 1,
+        "events_actual": 1,
+        "events_identical": true,
+        "lat_p50": 82.4,
+        "lat_p95": 173.2,
+        "lat_p99": 186.8,
+        "dropped": 0
+      }
+    }
+  }
+]

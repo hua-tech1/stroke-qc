@@ -104,6 +104,7 @@ uvicorn app.main:app --host 127.0.0.1 --port 8080
 | 验证集事件级 | **15 序列 / 1527 帧真实标注** | 序列级 14/15 正确；事件 F1 **0.9333**；入画延迟 2 帧 = 133.3 ms | `experiments/efo_val/out/` |
 | INT8 权重量化 | 同上 | 逐帧置信度 p99 漂移 **0.0191**，跨阈值 **0 帧**，事件级指标不变 | `experiments/int8/out/` |
 | 昇腾容量模型 | 官方规格 + 项目参数 | 4 路 DSA 仅占 40 路硬解能力的 **2.53%** | `experiments/ascend/out/` |
+| 多路并发管线 | 本机 RTX + 真实帧 | batch 4 单帧等效 **14.82 ms**（4 路负载 88.9%）；**乱序 p=0.3 时无保序仅 1/4 路事件正确，保序后 4/4** | `experiments/ascend_multichannel/out/` |
 
 复现命令、证据分级（L0 声称 → L3 留痕）与各结论的边界，见 [EVIDENCE.md](EVIDENCE.md)。
 

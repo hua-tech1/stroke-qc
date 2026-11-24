@@ -1,0 +1,42 @@
+[
+  {
+    "channels": 1,
+    "batch": 1,
+    "frames_per_channel": 80,
+    "infer_ms_per_frame": 35.14,
+    "mean_batch": 1,
+    "capacity_fps": 28.5,
+    "max_channels_at_15fps": 1.9,
+    "util_at_this_n": 52.7
+  },
+  {
+    "channels": 2,
+    "batch": 2,
+    "frames_per_channel": 80,
+    "infer_ms_per_frame": 21.63,
+    "mean_batch": 2,
+    "capacity_fps": 46.2,
+    "max_channels_at_15fps": 3.1,
+    "util_at_this_n": 64.9
+  },
+  {
+    "channels": 4,
+    "batch": 4,
+    "frames_per_channel": 80,
+    "infer_ms_per_frame": 14.82,
+    "mean_batch": 4,
+    "capacity_fps": 67.5,
+    "max_channels_at_15fps": 4.5,
+    "util_at_this_n": 88.9
+  },
+  {
+    "channels": 8,
+    "batch": 8,
+    "frames_per_channel": 80,
+    "infer_ms_per_frame": 13.13,
+    "mean_batch": 7.89,
+    "capacity_fps": 76.2,
+    "max_channels_at_15fps": 5.1,
+    "util_at_this_n": 157.6
+  }
+]

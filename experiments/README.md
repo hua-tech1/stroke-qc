@@ -9,6 +9,7 @@
 | `efo_val/` | 在 1527 帧真实标注上，事件级到底对不对？ | ultralytics + torch | 是（CPU 也能跑，慢） |
 | `int8/` | 权重量化会不会毁掉事件级指标？ | ultralytics + torch | 是 |
 | `ascend/` | 一块昇腾卡够不够接管一个导管室？ | 纯标准库 | 否 |
+| `ascend_multichannel/` | 多路并发管线跑得动吗？乱序会不会毁掉事件？ | ultralytics + torch + opencv | 是 |
 
 ## 数据流向
 
@@ -42,6 +43,11 @@ python experiments/efo_val/run_val_experiment.py \
 
 # 4) 昇腾容量模型（零依赖）
 python experiments/ascend/capacity_model.py
+
+# 5) 多路并发管线：容量 / 实时时延 / 乱序与保序
+python experiments/ascend_multichannel/pipeline.py --mode capacity --channels 1,2,4,8 --frames 80
+python experiments/ascend_multichannel/pipeline.py --mode realtime --channels 2,4 --frames 90 --buffer on
+python experiments/ascend_multichannel/pipeline.py --mode realtime --channels 4 --frames 90 --reorder-p 0.3 --buffer off
 ```
 
 ## 写材料时不能越过的边界
