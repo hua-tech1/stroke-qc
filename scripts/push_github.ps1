@@ -38,8 +38,15 @@ $url = "https://github.com/$Owner/$Repo.git"
 $env:GIT_TERMINAL_PROMPT = "0"
 $ErrorActionPreference = "Continue"
 
+# 候选：先试已配置的代理，再自动探测常见端口，最后试直连
 $modes = @()
-if ($httpProxy -or $httpsProxy) { $modes += @{ Name = "按当前代理配置"; Args = @() } }
+if ($httpProxy -or $httpsProxy) { $modes += @{ Name = "配置的代理 $httpProxy"; Args = @() } }
+foreach ($port in @(7877, 7890, 7891, 7892, 1080, 1081, 10808, 10809, 8888)) {
+  if ($httpProxy -and $httpProxy -match ":$port$") { continue }
+  $modes += @{ Name = "探测 127.0.0.1:$port"
+               Args = @("-c", "http.proxy=http://127.0.0.1:$port",
+                        "-c", "https.proxy=http://127.0.0.1:$port") }
+}
 $modes += @{ Name = "绕过代理直连"; Args = @("-c", "http.proxy=", "-c", "https.proxy=") }
 
 Write-Host "`n探测远端……"
@@ -81,6 +88,12 @@ if (-not $good) {
 }
 $proxyArgs = $good.Args
 Write-Host ("  采用：{0}" -f $good.Name) -ForegroundColor Green
+if ($good.Name -notmatch "^配置的代理" -and $good.Args.Count -gt 0) {
+  $used = ($good.Args | Where-Object { $_ -match "https.proxy=" }) -replace "^-c$",""
+  Write-Host "  提示：可把可用代理写入配置，省去每次探测" -ForegroundColor DarkGray
+  Write-Host "    git config --global http.proxy $used" -ForegroundColor DarkGray
+  Write-Host "    git config --global https.proxy $used" -ForegroundColor DarkGray
+}
 
 # ---------- 3. remote ----------
 git remote get-url origin 2>$null | Out-Null
