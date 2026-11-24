@@ -32,33 +32,57 @@ function Fail($m) { Write-Host "`n[中止] $m" -ForegroundColor Red; exit 1 }
 $httpProxy  = git config --get http.proxy
 $httpsProxy = git config --get https.proxy
 Write-Host "git 代理配置：http='$httpProxy' https='$httpsProxy'"
-$noProxyArgs = @()
-if ($httpProxy -or $httpsProxy) {
-  Write-Host "  检测到代理，本次推送将绕过它（-c http.proxy= -c https.proxy=）" -ForegroundColor Yellow
-  $noProxyArgs = @("-c", "http.proxy=", "-c", "https.proxy=")
-}
 
-# ---------- 2. 远端可达性 ----------
+# ---------- 2. 远端可达性（代理 / 直连 各试一次）----------
+$url = "https://github.com/$Owner/$Repo.git"
 $env:GIT_TERMINAL_PROMPT = "0"
+$ErrorActionPreference = "Continue"
+
+$modes = @()
+if ($httpProxy -or $httpsProxy) { $modes += @{ Name = "按当前代理配置"; Args = @() } }
+$modes += @{ Name = "绕过代理直连"; Args = @("-c", "http.proxy=", "-c", "https.proxy=") }
+
 Write-Host "`n探测远端……"
-git @noProxyArgs ls-remote --heads "https://github.com/$Owner/$Repo.git" 2>&1 | Out-Null
-if ($LASTEXITCODE -ne 0) {
-  $env:GIT_TERMINAL_PROMPT = "1"
+$good = $null
+foreach ($m in $modes) {
+  $gitArgs = @($m.Args) + @("ls-remote", "--heads", $url)
+  $out = & git @gitArgs 2>&1
+  if ($LASTEXITCODE -eq 0) {
+    Write-Host ("  [ok] {0}" -f $m.Name) -ForegroundColor Green
+    $good = $m
+    break
+  }
+  $first = ($out | Where-Object { $_ -match '\S' } | Select-Object -First 1)
+  Write-Host ("  [x]  {0}：{1}" -f $m.Name, $first) -ForegroundColor DarkGray
+}
+$ErrorActionPreference = "Stop"
+$env:GIT_TERMINAL_PROMPT = "1"
+
+if (-not $good) {
   Write-Host @"
 
-连不上 github.com。按顺序排查：
-  1) 代理已失效：git config --global --unset http.proxy ; git config --global --unset https.proxy
-  2) 需要代理才能上 GitHub：把代理改成一个**正在运行**的端口，例如
-       git config --global http.proxy http://127.0.0.1:<你的端口>
-  3) 本机 PowerShell 能直连 api.github.com（已验证），所以 1) 通常就能解决
+连不上 github.com，两种模式都失败。按顺序排查：
+
+  1) 你的代理/VPN 没开（最常见）
+     - 现在配的是 http://127.0.0.1:7890，但该端口没有服务在监听
+     - 启动 Clash / v2ray 等客户端，确认 7890 在监听，再重跑本脚本
+
+  2) 代理端口变了：改成实际端口
+       git config --global http.proxy  http://127.0.0.1:<端口>
+       git config --global https.proxy http://127.0.0.1:<端口>
+
+  3) 先确认通了再推（该命令应列出远端分支）
+       git ls-remote --heads $url
+
+说明：绕过代理时报 "Could not resolve host: github.com"（DNS 不通），
+      即这台机器目前只能经代理访问 GitHub，不是仓库或账号的问题。
 "@ -ForegroundColor Yellow
   exit 1
 }
-$env:GIT_TERMINAL_PROMPT = "1"
-Write-Host "  远端可达" -ForegroundColor Green
+$proxyArgs = $good.Args
+Write-Host ("  采用：{0}" -f $good.Name) -ForegroundColor Green
 
 # ---------- 3. remote ----------
-$url = "https://github.com/$Owner/$Repo.git"
 git remote get-url origin 2>$null | Out-Null
 if ($LASTEXITCODE -eq 0) {
   git remote set-url origin $url
@@ -76,10 +100,10 @@ if ($Force) {
   Write-Host "`n[注意] -Force：将覆盖远端 $target 的历史，不可逆。" -ForegroundColor Red
   $confirm = Read-Host "确认继续？输入 yes"
   if ($confirm -ne "yes") { Fail "已取消" }
-  git @noProxyArgs push --force -u origin "HEAD:$target"
+  git @proxyArgs push --force -u origin "HEAD:$target"
 } else {
   Write-Host "`n推送到分支 $target（非破坏性）……"
-  git @noProxyArgs push -u origin "HEAD:$target"
+  git @proxyArgs push -u origin "HEAD:$target"
 }
 
 if ($LASTEXITCODE -ne 0) {
@@ -91,7 +115,7 @@ if ($LASTEXITCODE -ne 0) {
 "@
 }
 
-git @noProxyArgs push origin --tags 2>$null | Out-Null
+git @proxyArgs push origin --tags 2>$null | Out-Null
 
 Write-Host @"
 
