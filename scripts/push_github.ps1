@@ -1,4 +1,4 @@
-# 把本地仓库同步到 GitHub（hua-tech1）
+﻿# 把本地仓库同步到 GitHub（hua-tech1）
 #
 # 背景（实测于本机）：
 #   - GitHub 用户名是 hua-tech1（带连字符），不是 hua_tech1
